@@ -19,7 +19,7 @@ class HomePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(context), // Context pass kiya navigation k liye
+              _buildHeader(context),
 
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -29,7 +29,9 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              _buildBannerSlider(),
+              // --- FIXED: Ab yahan static image ki jagah real Slider chalega ---
+              const HomeBannerSlider(),
+
               _buildSectionHeader('Categories'),
               _buildCircularCategories(),
 
@@ -52,16 +54,16 @@ class HomePage extends StatelessWidget {
 
               _buildSectionHeader('Fresh Fruits'),
               _buildHorizontalProductList(context, [
-                {'name': 'Red Apple', 'price': '£2.5', 'img': 'https://images.unsplash.com/photo-1560806887-1e4cd0b6bcd6?w=400'},
-                {'name': 'Banana Dozen', 'price': '£1.8', 'img': 'https://images.unsplash.com/photo-1571771894821-ad9902d83f4a?w=400'},
+                {'name': 'Red Apple', 'price': '£2.5', 'img': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400'},
+                {'name': 'Banana Dozen', 'price': '£1.8', 'img': 'https://images.unsplash.com/photo-1603833665858-e61d17a86224?w=400'},
                 {'name': 'Fresh Mango', 'price': '£4.2', 'img': 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=400'},
               ]),
 
               _buildSectionHeader('Daily Dairy'),
               _buildHorizontalProductList(context, [
                 {'name': 'Whole Milk(2L)', 'price': '£3.2', 'img': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400'},
-                {'name': 'Fresh Yogurt', 'price': '£1.5', 'img': 'https://images.unsplash.com/photo-1584273143981-43c26a09f8d7?w=400'},
-                {'name': 'Cheese Block', 'price': '£5.0', 'img': 'https://images.unsplash.com/photo-1486297678162-ad2a19b05840?w=400'},
+                {'name': 'Fresh Yogurt', 'price': '£1.5', 'img': 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400'},
+                {'name': 'Cheese Block', 'price': '£5.0', 'img': 'https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?w=400'},
               ]),
 
               const SizedBox(height: 100),
@@ -80,7 +82,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Updated Header with Navigation ---
   Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -115,7 +116,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Product Builder & Banners (Slightly Refined) ---
   Widget _buildHorizontalProductList(BuildContext context, List<Map<String, String>> products) {
     return SizedBox(
       height: 230,
@@ -195,22 +195,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBannerSlider() {
-    return Container(
-      height: 180,
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(25), color: Colors.green),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: Image.network(
-          'https://images.pexels.com/photos/1359326/pexels-photo-1359326.jpeg?auto=compress&cs=tinysrgb&w=600',
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
-
   Widget _buildCircularCategories() {
     final List<Map<String, String>> categories = [
       {'name': 'Meat', 'img': 'https://cdn-icons-png.flaticon.com/512/3143/3143643.png'},
@@ -264,7 +248,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Bottom Nav with Profile Navigation ---
   Widget _buildBottomNav(BuildContext context) {
     return BottomAppBar(
       height: 70,
@@ -289,6 +272,80 @@ class HomePage extends StatelessWidget {
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- NAYA WIDGET: Banner Slider ---
+class HomeBannerSlider extends StatefulWidget {
+  const HomeBannerSlider({super.key});
+
+  @override
+  State<HomeBannerSlider> createState() => _HomeBannerSliderState();
+}
+
+class _HomeBannerSliderState extends State<HomeBannerSlider> {
+  int _currentPage = 0;
+
+  // Yahan aap apni pasand ki 3 pictures laga sakte hain slider k liye
+  final List<String> _bannerImages = [
+    'https://images.pexels.com/photos/1359326/pexels-photo-1359326.jpeg?auto=compress&cs=tinysrgb&w=600',
+    'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=600',
+    'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=600',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Stack(
+        children: [
+          // 1. PageView (Swipe karne wala hissa)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(25),
+            child: PageView.builder(
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              itemCount: _bannerImages.length,
+              itemBuilder: (context, index) {
+                return Image.network(
+                  _bannerImages[index],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                );
+              },
+            ),
+          ),
+
+          // 2. Indicator Dots (Neeche jo dots aate hain)
+          Positioned(
+            bottom: 15,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _bannerImages.length,
+                    (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 8,
+                  width: _currentPage == index ? 24 : 8,
+                  decoration: BoxDecoration(
+                    color: _currentPage == index ? Colors.white : Colors.white.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
