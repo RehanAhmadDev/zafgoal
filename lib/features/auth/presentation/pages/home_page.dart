@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
+import 'cart_page.dart';
 import 'product_detail_page.dart';
 import 'category_grid_page.dart';
+
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -27,14 +29,14 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              // --- Banner Slider ---
+              // --- 1. Banner Slider ---
               _buildBannerSlider(),
 
               // --- Categories Section ---
               _buildSectionHeader('Categories'),
               _buildCircularCategories(),
 
-              // --- View All Button (Kayam hai!) ---
+              // --- View All Button ---
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 10),
@@ -73,7 +75,8 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      // --- Bottom Nav Fixed with Cart Navigation ---
+      bottomNavigationBar: _buildBottomNav(context),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         backgroundColor: const Color(0xFF233933),
@@ -104,12 +107,16 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Product Card ---
+  // --- Product Card (Updated navigation to detail page) ---
   Widget _buildProductCard(BuildContext context, Map<String, String> product) {
     return GestureDetector(
       onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => ProductDetailPage(title: product['name']!, price: product['price']!))
+          MaterialPageRoute(builder: (context) => ProductDetailPage(
+            title: product['name']!,
+            price: product['price']!,
+            // Agay hum detail page mein image URL bhi bhejenge
+          ))
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -259,7 +266,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(BuildContext context) { // Context pass kiya
     return BottomAppBar(
       height: 70,
       color: Colors.white,
@@ -267,12 +274,21 @@ class HomePage extends StatelessWidget {
       notchMargin: 8,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: const [
-          Icon(Icons.home_filled, color: Color(0xFF233933)),
-          Icon(Icons.grid_view_rounded, color: Colors.grey),
-          SizedBox(width: 40),
-          Icon(Icons.qr_code_scanner, color: Colors.grey),
-          Icon(Icons.shopping_bag_outlined, color: Colors.grey),
+        children: [
+          IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () {}),
+          const SizedBox(width: 40),
+          IconButton(icon: const Icon(Icons.qr_code_scanner, color: Colors.grey), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey),
+            onPressed: () {
+              // Cart Page Navigation
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartPage()),
+              );
+            },
+          ),
         ],
       ),
     );
