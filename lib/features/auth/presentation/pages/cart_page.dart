@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
-import 'checkout_page.dart'; // Checkout import karein
+import 'checkout_page.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -20,13 +19,10 @@ class CartPage extends StatelessWidget {
         ),
         title: const Text('Cart', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
-        actions: [
-          _buildNotificationBell(),
-        ],
       ),
       body: Column(
         children: [
-          // 1. Search Bar (As per Cart.png)
+          // Search Bar
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: CustomTextField(
@@ -35,8 +31,19 @@ class CartPage extends StatelessWidget {
             ),
           ),
 
-          // 2. Horizontal Stepper
-          _buildStepper(),
+          // --- FIX 1: Bulletproof Stepper ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+            child: Row(
+              children: [
+                _stepCircle("1", "My Order", true),
+                Expanded(child: Container(height: 2, color: Colors.black12)), // Expanded se line kabhi bahar nahi jayegi
+                _stepCircle("2", "Details", false),
+                Expanded(child: Container(height: 2, color: Colors.black12)),
+                _stepCircle("3", "Payment", false),
+              ],
+            ),
+          ),
 
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -49,72 +56,35 @@ class CartPage extends StatelessWidget {
             ),
           ),
 
-          // 3. Cart Items List
+          // --- FIX 2: List View with Reliable Images ---
           Expanded(
             child: ListView(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 20),
               children: [
-                _buildCartItem('Mr.Cheezy', '£3.2', '5', 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200'),
-                _buildCartItem('Fries M', '£3.2', '3', 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=200'),
-                _buildCartItem('Vanilla Ice', '£3.2', '4', 'https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=200'),
-                _buildCartItem('Americano L', '£3.2', '10', 'https://images.unsplash.com/photo-1541167760496-162955ed8a9f?w=200'),
+                _buildCartItem('Mr.Cheezy', '£3.2', '5', 'https://picsum.photos/100?random=1'),
+                _buildCartItem('Fries M', '£3.2', '3', 'https://picsum.photos/100?random=2'),
+                _buildCartItem('Vanilla Ice', '£3.2', '4', 'https://picsum.photos/100?random=3'),
+                _buildCartItem('Americano L', '£3.2', '10', 'https://picsum.photos/100?random=4'),
               ],
             ),
           ),
 
-          // 4. Checkout Summary Container
+          // Checkout Summary
           _buildSummaryCard(context),
         ],
       ),
     );
   }
 
-  // --- Notification Bell with Dot ---
-  Widget _buildNotificationBell() {
-    return Padding(
-      padding: const EdgeInsets.only(right: 15),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.notifications_none_outlined, color: Colors.black),
-          ),
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Container(height: 8, width: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
-          )
-        ],
-      ),
-    );
-  }
-
-  // --- Stepper Widget ---
-  Widget _buildStepper() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _stepCircle("1", "My Order", true),
-          _stepLine(),
-          _stepCircle("2", "Details", false),
-          _stepLine(),
-          _stepCircle("3", "Payment", false),
-        ],
-      ),
-    );
-  }
-
+  // --- Helper for Stepper ---
   Widget _stepCircle(String number, String label, bool isActive) {
     return Column(
       children: [
         CircleAvatar(
           radius: 18,
-          backgroundColor: isActive ? Colors.white : Colors.black.withOpacity(0.05),
-          child: Text(number, style: TextStyle(color: isActive ? Colors.black : Colors.grey)),
+          backgroundColor: isActive ? const Color(0xFF233933) : Colors.black.withOpacity(0.05),
+          child: Text(number, style: TextStyle(color: isActive ? Colors.white : Colors.grey, fontSize: 14, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(height: 5),
         Text(label, style: TextStyle(fontSize: 10, color: isActive ? Colors.black : Colors.grey)),
@@ -122,40 +92,45 @@ class CartPage extends StatelessWidget {
     );
   }
 
-  Widget _stepLine() {
-    return Container(width: 50, height: 1, color: Colors.black12, margin: const EdgeInsets.only(bottom: 20));
-  }
-
-  // --- Cart Item Card ---
+  // --- Helper for Cart Item with Fallback Icon ---
   Widget _buildCartItem(String name, String price, String qty, String imgUrl) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
-            child: Image.network(imgUrl, width: 70, height: 70, fit: BoxFit.cover),
+            child: Image.network(
+              imgUrl,
+              width: 60,
+              height: 60,
+              fit: BoxFit.cover,
+              // Agar net band ho to yeh chalega, error crash nahi hogi
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 60, height: 60, color: Colors.grey.shade200,
+                child: const Icon(Icons.fastfood, color: Colors.grey),
+              ),
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(price, style: const TextStyle(color: Colors.grey)),
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
+                Text(price, style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ),
+          // FIX: mainAxisSize min kiya taake buttons bahar na niklein
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _qtyBtn(Icons.remove),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text(qty, style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
               _qtyBtn(Icons.add, isDark: true),
@@ -174,34 +149,33 @@ class CartPage extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: Colors.black12),
       ),
-      child: Icon(icon, size: 18, color: isDark ? Colors.white : Colors.black),
+      child: Icon(icon, size: 16, color: isDark ? Colors.white : Colors.black),
     );
   }
 
   // --- Summary Card ---
   Widget _buildSummaryCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(25),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           _summaryRow('Sub Total :', '125£'),
           _summaryRow('Delivery Charges :', '0£'),
           _summaryRow('Discount :', '5%'),
           const Divider(),
           _summaryRow('Total :', '105£', isTotal: true),
-          const SizedBox(height: 20),
+          const SizedBox(height: 15),
           PrimaryButton(
-              text: 'Proceed to Checkout',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CheckoutPage()),
-                );
-              }
+            text: 'Proceed to Checkout',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const CheckoutPage()));
+            },
           ),
         ],
       ),
@@ -215,7 +189,7 @@ class CartPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal, fontSize: isTotal ? 18 : 14)),
+          Text(value, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );

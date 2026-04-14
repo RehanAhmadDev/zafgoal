@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
 class ProductDetailPage extends StatelessWidget {
@@ -9,77 +8,183 @@ class ProductDetailPage extends StatelessWidget {
   const ProductDetailPage({
     super.key,
     required this.title,
-    required this.price
+    required this.price,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.primaryDark),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
+        title: const Text('Product', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          IconButton(icon: const Icon(Icons.notifications_none_outlined, color: Colors.black), onPressed: () {}),
+        ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Center(
-                child: Icon(Icons.image, size: 150, color: Colors.grey),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(30),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(40),
-                  topRight: Radius.circular(40),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // 1. Search Bar (As per Figma)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(15)), borderSide: BorderSide.none),
                 ),
               ),
+            ),
+
+            // 2. Main Product Card
+            Container(
+              margin: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                      Text(price, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
-                    ],
+                  // Product Image
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(25),
+                    child: Image.network(
+                      'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=600',
+                      height: 250,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('Description', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
+
+                  // Title & Price Info
+                  Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 5),
+                  Text('Price: $price (£0.27 / unit)', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                  const Text('Brand: ZafGOAL Fresh Select', style: TextStyle(color: Colors.grey, fontSize: 12)),
+
+                  const SizedBox(height: 20),
+                  const Text('Product Description :', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
                   const Text(
-                    'This is a high-quality product selected for your daily needs. Fresh and organic.',
-                    style: TextStyle(color: Colors.grey, height: 1.5),
+                    'Our Class A Large Free Range eggs are sourced directly from trusted British farms where hens are free to roam from dawn until dusk. These eggs are known for their rich, golden yolks and firm whites—perfect for poaching, baking, or a classic Sunday breakfast.',
+                    style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
                   ),
-                  const Spacer(),
-                  PrimaryButton(
-                    text: 'Add to Cart',
-                    onPressed: () {},
+
+                  const SizedBox(height: 25),
+
+                  // Quantity & Price Row
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(15)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            _qtyActionBtn(Icons.remove),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: Text('1', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ),
+                            _qtyActionBtn(Icons.add, isPrimary: true),
+                          ],
+                        ),
+                        Text(price, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
+
+            // 3. Key Features Section
+            _buildKeyFeatures(),
+
+            const SizedBox(height: 20),
+
+            // 4. Bottom Buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        side: const BorderSide(color: Colors.black12),
+                      ),
+                      child: const Text('Add To Cart', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF233933),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                      child: const Text('Buy Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _qtyActionBtn(IconData icon, {bool isPrimary = false}) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isPrimary ? Colors.grey.withOpacity(0.5) : Colors.transparent,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Icon(icon, size: 20, color: isPrimary ? Colors.black : Colors.black54),
+    );
+  }
+
+  Widget _buildKeyFeatures() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Key Features', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          _featureItem('British Lion Quality: Guaranteed quality and vaccinated against Salmonella.'),
         ],
       ),
+    );
+  }
+
+  Widget _featureItem(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+        Expanded(child: Text(text, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+      ],
     );
   }
 }
