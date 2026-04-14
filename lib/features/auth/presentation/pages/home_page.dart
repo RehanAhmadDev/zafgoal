@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:zafgoal/core/theme/app_colors.dart';
+import 'package:zafgoal/features/auth/presentation/pages/profile_page.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
+
 import 'cart_page.dart';
+import 'notifications_page.dart';
 import 'product_detail_page.dart';
 import 'category_grid_page.dart';
-
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -18,9 +19,8 @@ class HomePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              _buildHeader(context), // Context pass kiya navigation k liye
 
-              // --- Search Bar ---
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: CustomTextField(
@@ -29,14 +29,10 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              // --- 1. Banner Slider ---
               _buildBannerSlider(),
-
-              // --- Categories Section ---
               _buildSectionHeader('Categories'),
               _buildCircularCategories(),
 
-              // --- View All Button ---
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 10),
@@ -54,7 +50,6 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              // --- 1st Horizontal List: Fresh Fruits ---
               _buildSectionHeader('Fresh Fruits'),
               _buildHorizontalProductList(context, [
                 {'name': 'Red Apple', 'price': '£2.5', 'img': 'https://images.unsplash.com/photo-1560806887-1e4cd0b6bcd6?w=400'},
@@ -62,7 +57,6 @@ class HomePage extends StatelessWidget {
                 {'name': 'Fresh Mango', 'price': '£4.2', 'img': 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=400'},
               ]),
 
-              // --- 2nd Horizontal List: Daily Dairy ---
               _buildSectionHeader('Daily Dairy'),
               _buildHorizontalProductList(context, [
                 {'name': 'Whole Milk(2L)', 'price': '£3.2', 'img': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400'},
@@ -75,7 +69,6 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
-      // --- Bottom Nav Fixed with Cart Navigation ---
       bottomNavigationBar: _buildBottomNav(context),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
@@ -87,7 +80,42 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Horizontal Product List Builder ---
+  // --- Updated Header with Navigation ---
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
+            },
+            child: const CircleAvatar(
+              radius: 25,
+              backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=rehan'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Alex Jonathan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('10° Friday 11:59am', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage()));
+            },
+            child: _buildNotificationIcon(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Product Builder & Banners (Slightly Refined) ---
   Widget _buildHorizontalProductList(BuildContext context, List<Map<String, String>> products) {
     return SizedBox(
       height: 230,
@@ -107,7 +135,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Product Card (Updated navigation to detail page) ---
   Widget _buildProductCard(BuildContext context, Map<String, String> product) {
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -115,7 +142,6 @@ class HomePage extends StatelessWidget {
           MaterialPageRoute(builder: (context) => ProductDetailPage(
             title: product['name']!,
             price: product['price']!,
-            // Agay hum detail page mein image URL bhi bhejenge
           ))
       ),
       child: Container(
@@ -169,32 +195,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Header ---
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 25,
-            backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=rehan'),
-          ),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Alex Jonathan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text('10° Friday 11:59am', style: TextStyle(color: Colors.grey, fontSize: 12)),
-            ],
-          ),
-          const Spacer(),
-          _buildNotificationIcon(),
-        ],
-      ),
-    );
-  }
-
-  // --- Banner Slider ---
   Widget _buildBannerSlider() {
     return Container(
       height: 180,
@@ -211,7 +211,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Circular Categories ---
   Widget _buildCircularCategories() {
     final List<Map<String, String>> categories = [
       {'name': 'Meat', 'img': 'https://cdn-icons-png.flaticon.com/512/3143/3143643.png'},
@@ -250,7 +249,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // --- Helpers ---
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -266,7 +264,8 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) { // Context pass kiya
+  // --- Bottom Nav with Profile Navigation ---
+  Widget _buildBottomNav(BuildContext context) {
     return BottomAppBar(
       height: 70,
       color: Colors.white,
@@ -282,11 +281,13 @@ class HomePage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey),
             onPressed: () {
-              // Cart Page Navigation
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CartPage()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage()));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outline, color: Colors.grey),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
             },
           ),
         ],
