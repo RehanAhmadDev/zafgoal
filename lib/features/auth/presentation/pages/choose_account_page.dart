@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
-import 'sign_up_form_page.dart'; // Sign Up Form page ko import kiya
+import 'sign_up_form_page.dart';
 
 class ChooseAccountPage extends StatefulWidget {
   const ChooseAccountPage({super.key});
@@ -84,11 +84,11 @@ class _ChooseAccountPageState extends State<ChooseAccountPage> {
               PrimaryButton(
                 text: 'Continue',
                 onPressed: () {
-                  // Aglay page (Sign Up Form) par jane ke liye
+                  // --- FIX: Yahan hum selectedType (Account Type) aglay page ko bhej rahe hain ---
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SignUpFormPage(),
+                      builder: (context) => SignUpFormPage(accountType: selectedType),
                     ),
                   );
                 },
@@ -111,7 +111,6 @@ class _ChooseAccountPageState extends State<ChooseAccountPage> {
     );
   }
 
-  // Card banane wala helper method
   Widget _buildAccountCard({
     required String title,
     required String subtitle,
@@ -124,7 +123,6 @@ class _ChooseAccountPageState extends State<ChooseAccountPage> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        // Selection par border color change hoga
         border: Border.all(
           color: isSelected ? AppColors.primaryDark : Colors.transparent,
           width: 2,

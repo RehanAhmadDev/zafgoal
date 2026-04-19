@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
@@ -7,8 +8,94 @@ import 'package:zafgoal/shared/widgets/primary_button.dart';
 import 'home_page.dart';
 import 'sign_in_page.dart';
 
-class SignUpFormPage extends StatelessWidget {
-  const SignUpFormPage({super.key});
+class SignUpFormPage extends StatefulWidget {
+  // Pichlay page se aane wala Account Type (Admin ya Staff)
+  final String accountType;
+
+  const SignUpFormPage({super.key, this.accountType = 'Staff'});
+
+  @override
+  State<SignUpFormPage> createState() => _SignUpFormPageState();
+}
+
+class _SignUpFormPageState extends State<SignUpFormPage> {
+  // 1. Text Controllers data read karne k liye
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  // 2. Supabase Signup Logic
+  Future<void> _signUpWithSupabase() async {
+    // Agar koi field khali hai to error show karo
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all required fields')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // A. Supabase Authentication may user create karna
+      final AuthResponse res = await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      final User? user = res.user;
+
+      if (user != null) {
+        // B. Database ki 'profiles' table may extra data save karna
+        await supabase.from('profiles').insert({
+          'id': user.id, // Auth user ka ID yahan primary key banay ga
+          'full_name': _nameController.text.trim(),
+          'phone_number': _phoneController.text.trim(),
+          'role': widget.accountType,
+          // Note: dob column humne DB may nahi banaya tha, agar zaroorat hui toh baad may SQL may add kar lengay.
+        });
+
+        // C. Kamyabi k baad Home Page par le jao
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+                (route) => false,
+          );
+        }
+      }
+    } on AuthException catch (e) {
+      // Supabase ka apna error (jaise email already exists)
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      // Koi aur error
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _dobController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,31 +129,35 @@ class SignUpFormPage extends StatelessWidget {
                   children: [
                     const Center(child: Text('Signup now', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary))),
                     const SizedBox(height: 25),
+
                     _buildLabel('Full Name'),
-                    const CustomTextField(hintText: 'Rehan Ahmad'),
+                    CustomTextField(hintText: 'Rehan Ahmad', controller: _nameController),
                     const SizedBox(height: 16),
+
                     _buildLabel('Email Address'),
-                    const CustomTextField(hintText: 'example@gmail.com'),
+                    CustomTextField(hintText: 'example@gmail.com', controller: _emailController),
                     const SizedBox(height: 16),
+
                     _buildLabel('Date of Birth'),
-                    const CustomTextField(hintText: 'DD/MM/YYYY'),
+                    CustomTextField(hintText: 'DD/MM/YYYY', controller: _dobController),
                     const SizedBox(height: 16),
+
                     _buildLabel('Phone Number'),
-                    const CustomTextField(hintText: '+92 3XX XXXXXXX'),
+                    CustomTextField(hintText: '+92 3XX XXXXXXX', controller: _phoneController),
                     const SizedBox(height: 16),
+
                     _buildLabel('Password'),
-                    const CustomTextField(hintText: 'Enter Password', isPassword: true),
+                    CustomTextField(hintText: 'Enter Password', isPassword: true, controller: _passwordController),
                     const SizedBox(height: 30),
-                    PrimaryButton(
-                        text: 'Sign Up',
-                        onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const HomePage()),
-                                (route) => false,
-                          );
-                        }
+
+                    // 3. Loading state check
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
+                        : PrimaryButton(
+                      text: 'Sign Up',
+                      onPressed: _signUpWithSupabase,
                     ),
+
                     const SizedBox(height: 15),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

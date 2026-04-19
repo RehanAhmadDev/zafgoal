@@ -4,12 +4,14 @@ import 'package:zafgoal/core/theme/app_colors.dart';
 class CustomTextField extends StatefulWidget {
   final String hintText;
   final bool isPassword;
-  final Widget? suffixIcon; // Non-password fields ke liye (agar koi aur icon dena ho)
+  final TextEditingController? controller; // Yahan controller add kar diya gaya hai
+  final Widget? suffixIcon;
 
   const CustomTextField({
     super.key,
     required this.hintText,
     this.isPassword = false,
+    this.controller,
     this.suffixIcon,
   });
 
@@ -18,30 +20,27 @@ class CustomTextField extends StatefulWidget {
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
-  late bool _obscureText;
+  bool _obscureText = true;
 
   @override
   void initState() {
     super.initState();
-    // Shuru mein agar password hai to text chupa (hide) hoga
     _obscureText = widget.isPassword;
   }
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: widget.controller, // TextField ko controller pass kar diya
       obscureText: _obscureText,
       decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
         filled: true,
-        fillColor: AppColors.fieldFill, // Wohi professional light gray
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        // Yahan jadu hai: Agar password field hai to clickable IconButton lagao
+        fillColor: AppColors.background, // Ya Colors.white, jo aapke design mein hai
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+
+        // Password k aagay ankh (eye) ka icon lagane k liye
         suffixIcon: widget.isPassword
             ? IconButton(
           icon: Icon(
@@ -50,11 +49,24 @@ class _CustomTextFieldState extends State<CustomTextField> {
           ),
           onPressed: () {
             setState(() {
-              _obscureText = !_obscureText; // Hide/Show toggle
+              _obscureText = !_obscureText;
             });
           },
         )
-            : widget.suffixIcon, // Warna normal icon dikhao
+            : widget.suffixIcon,
+
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primaryDark, width: 1.5),
+        ),
       ),
     );
   }

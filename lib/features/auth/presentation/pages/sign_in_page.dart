@@ -1,16 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
-// 1. Nayi file yahan import kardi
 import 'forgot_password_page.dart';
 import 'choose_account_page.dart';
 import 'home_page.dart';
 
-class SignInPage extends StatelessWidget {
+class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
+
+  @override
+  State<SignInPage> createState() => _SignInPageState();
+}
+
+class _SignInPageState extends State<SignInPage> {
+  // 1. Text Controllers data read karne k liye
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  // 2. Supabase Sign In Logic
+  Future<void> _signInWithSupabase() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Supabase se verify karwa rahe hain
+      await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Kamyabi k baad Home Page par le jao
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+              (route) => false,
+        );
+      }
+    } on AuthException catch (e) {
+      // Supabase ka error (jaise galat password)
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login Failed: ${e.message}')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,12 +116,13 @@ class SignInPage extends StatelessWidget {
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                     const SizedBox(height: 30),
-                    const CustomTextField(hintText: 'Email or Username'),
+
+                    // Controllers attach kar diye hain
+                    CustomTextField(hintText: 'Email or Username', controller: _emailController),
                     const SizedBox(height: 16),
-                    const CustomTextField(hintText: 'Password', isPassword: true),
+                    CustomTextField(hintText: 'Password', isPassword: true, controller: _passwordController),
                     const SizedBox(height: 12),
 
-                    // 2. Yahan GestureDetector laga diya gaya hai
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
@@ -74,23 +137,22 @@ class SignInPage extends StatelessWidget {
                           style: TextStyle(
                             color: AppColors.primaryDark,
                             fontWeight: FontWeight.w500,
-                            decoration: TextDecoration.underline, // Clickable feel dene k liye
+                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
-                    PrimaryButton(
-                        text: 'Sign In',
-                        onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const HomePage()),
-                                (route) => false,
-                          );
-                        }
+
+                    // 3. Loading aur Sign In Button
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
+                        : PrimaryButton(
+                      text: 'Sign In',
+                      onPressed: _signInWithSupabase,
                     ),
+
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

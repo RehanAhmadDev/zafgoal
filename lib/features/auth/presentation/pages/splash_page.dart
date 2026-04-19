@@ -1,8 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 
-class SplashPage extends StatelessWidget {
+// Agar HomePage ka path thora mukhtalif ho toh auto-import se adjust kar lijiye ga
+import 'home_page.dart';
+
+class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
+
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthSession();
+  }
+
+  // Session check karne wala Asal Logic
+  Future<void> _checkAuthSession() async {
+    // 2.5 seconds ka delay taake user ko splash design nazar aaye
+    await Future.delayed(const Duration(milliseconds: 2500));
+
+    if (!mounted) return;
+
+    // Supabase se current user session mangwana
+    final session = Supabase.instance.client.auth.currentSession;
+
+    if (session != null) {
+      // Agar user pehle se login hai -> Direct Home Page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+    } else {
+      // Agar login nahi hai -> Sign In Page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SignInPage()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,15 +51,15 @@ class SplashPage extends StatelessWidget {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 1. Single Background Image (Aapki splash_bg)
+          // 1. Single Background Image
           Positioned.fill(
             child: Image.asset(
-              'assets/images/splash_bg.png', // NOTE: Agar aapki image .png hai, toh isko .png kar lijiye ga
+              'assets/images/splash_bg.png',
               fit: BoxFit.cover,
             ),
           ),
 
-          // 2. White Gradient Overlay (Taake text clear nazar aaye)
+          // 2. White Gradient Overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -92,38 +133,15 @@ class SplashPage extends StatelessWidget {
 
                 const SizedBox(height: 60),
 
-                // Next Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignInPage()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B2E28),
-                      minimumSize: const Size(double.infinity, 60),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                // Auto-loading Indicator (Next button ki jagah)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                  child: SizedBox(
+                    height: 60, // Puranay button ki height match karne k liye
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF1B2E28),
                       ),
-                      elevation: 0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text(
-                          'Next',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Icon(Icons.arrow_forward, color: Colors.white),
-                      ],
                     ),
                   ),
                 ),
