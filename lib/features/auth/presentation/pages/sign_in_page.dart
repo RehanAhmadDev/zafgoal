@@ -4,6 +4,8 @@ import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
+// 1. Nayi file yahan import kardi
+import 'forgot_password_page.dart';
 import 'choose_account_page.dart';
 import 'home_page.dart';
 
@@ -56,13 +58,28 @@ class SignInPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     const CustomTextField(hintText: 'Password', isPassword: true),
                     const SizedBox(height: 12),
-                    const Align(
+
+                    // 2. Yahan GestureDetector laga diya gaya hai
+                    Align(
                       alignment: Alignment.centerRight,
-                      child: Text(
-                        'Forget Password?',
-                        style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w500),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+                          );
+                        },
+                        child: const Text(
+                          'Forget Password?',
+                          style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w500,
+                            decoration: TextDecoration.underline, // Clickable feel dene k liye
+                          ),
+                        ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
                     PrimaryButton(
                         text: 'Sign In',

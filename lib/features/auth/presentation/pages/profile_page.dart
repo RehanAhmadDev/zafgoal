@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+
+import 'add_payment_card_page.dart';
+import 'my_orders_page.dart';
+
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -21,20 +25,11 @@ class ProfilePage extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 20),
-
-            // --- User Profile Info ---
             _buildProfileHeader(),
-
             const SizedBox(height: 30),
-
-            // --- Settings List ---
             _buildSettingsSection(context),
-
             const SizedBox(height: 30),
-
-            // --- Logout Button ---
             _buildLogoutButton(),
-
             const SizedBox(height: 20),
           ],
         ),
@@ -42,7 +37,6 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  // --- Profile Header (Image, Name, Email) ---
   Widget _buildProfileHeader() {
     return Column(
       children: [
@@ -73,7 +67,6 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  // --- Settings Section ---
   Widget _buildSettingsSection(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -89,16 +82,36 @@ class ProfilePage extends StatelessWidget {
                 // Notification page navigation yahan ayegi
               }
           ),
-          _buildSettingsTile(Icons.shopping_bag_outlined, 'My Orders'),
+          _buildSettingsTile(
+              Icons.shopping_bag_outlined,
+              'My Orders',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyOrdersPage()),
+                );
+              }
+          ),
           _buildSettingsTile(Icons.location_on_outlined, 'Address Book'),
-          _buildSettingsTile(Icons.payment_outlined, 'Payment Methods'),
+
+          // --- UPDATE: Payment Methods Navigation ---
+          _buildSettingsTile(
+              Icons.payment_outlined,
+              'Payment Methods',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddPaymentCardPage()),
+                );
+              }
+          ),
+
           _buildSettingsTile(Icons.security_outlined, 'Privacy Policy'),
         ],
       ),
     );
   }
 
-  // --- Settings Tile Helper ---
   Widget _buildSettingsTile(IconData icon, String title, {VoidCallback? onTap}) {
     return ListTile(
       leading: Container(
@@ -115,7 +128,6 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  // --- Logout Button ---
   Widget _buildLogoutButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

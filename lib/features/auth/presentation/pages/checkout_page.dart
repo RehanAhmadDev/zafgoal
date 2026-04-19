@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
+
+import 'add_address_page.dart';
+import 'add_payment_card_page.dart';
+
 class CheckoutPage extends StatelessWidget {
   const CheckoutPage({super.key});
 
@@ -27,7 +31,7 @@ class CheckoutPage extends StatelessWidget {
 
             // --- Address Section ---
             _buildSectionHeader('Address'),
-            _buildAddressCard(),
+            _buildAddressCard(context),
 
             // --- Delivery Method ---
             _buildSectionHeader('Delivery Method'),
@@ -35,7 +39,8 @@ class CheckoutPage extends StatelessWidget {
 
             // --- Payment Method ---
             _buildSectionHeader('Payment Method'),
-            _buildPaymentMethod(),
+            // Yahan context pass kiya hai taake navigation ho sakay
+            _buildPaymentMethod(context),
 
             const SizedBox(height: 30),
 
@@ -47,7 +52,6 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  // --- Horizontal Stepper (Active Step 2: Details) ---
   Widget _buildStepper() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -84,7 +88,6 @@ class CheckoutPage extends StatelessWidget {
     return Container(width: 50, height: 2, color: isFinished ? const Color(0xFF233933) : Colors.black12, margin: const EdgeInsets.only(bottom: 20));
   }
 
-  // --- Section Header ---
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -92,8 +95,7 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  // --- Address Card ---
-  Widget _buildAddressCard() {
+  Widget _buildAddressCard(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(15),
@@ -111,13 +113,20 @@ class CheckoutPage extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () {}),
+          IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddAddressPage()),
+                );
+              }
+          ),
         ],
       ),
     );
   }
 
-  // --- Delivery Method ---
   Widget _buildDeliveryMethod() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -139,29 +148,36 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  // --- Payment Method ---
-  Widget _buildPaymentMethod() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.credit_card, color: Colors.blue),
-              SizedBox(width: 15),
-              Text('Visa Card (.... 4242)', style: TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-          Icon(Icons.keyboard_arrow_right),
-        ],
+  // --- NAYA METHOD: Payment Method with Navigation ---
+  Widget _buildPaymentMethod(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AddPaymentCardPage()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.credit_card, color: Colors.blue),
+                SizedBox(width: 15),
+                Text('Visa Card (.... 4242)', style: TextStyle(fontWeight: FontWeight.w500)),
+              ],
+            ),
+            Icon(Icons.keyboard_arrow_right),
+          ],
+        ),
       ),
     );
   }
 
-  // --- Bottom Summary ---
   Widget _buildBottomSummary(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(25),

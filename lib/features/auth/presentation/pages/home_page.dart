@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:zafgoal/features/auth/presentation/pages/profile_page.dart';
+import 'package:zafgoal/features/auth/presentation/pages/search_results_page.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 
 import 'cart_page.dart';
 import 'notifications_page.dart';
 import 'product_detail_page.dart';
 import 'category_grid_page.dart';
+
+
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -21,11 +24,32 @@ class HomePage extends StatelessWidget {
             children: [
               _buildHeader(context),
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: CustomTextField(
-                  hintText: 'Search',
-                  suffixIcon: Icon(Icons.search, color: Colors.grey),
+              // 2. Yahan active Search Bar laga diya hai
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: TextField(
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (query) {
+                    if (query.trim().isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SearchResultsPage(searchQuery: query),
+                        ),
+                      );
+                    }
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search products...',
+                    suffixIcon: const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
 
@@ -290,7 +314,6 @@ class HomeBannerSlider extends StatefulWidget {
 class _HomeBannerSliderState extends State<HomeBannerSlider> {
   int _currentPage = 0;
 
-  // Yahan aap apni pasand ki 3 pictures laga sakte hain slider k liye
   final List<String> _bannerImages = [
     'https://images.pexels.com/photos/1359326/pexels-photo-1359326.jpeg?auto=compress&cs=tinysrgb&w=600',
     'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=600',
@@ -305,7 +328,6 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Stack(
         children: [
-          // 1. PageView (Swipe karne wala hissa)
           ClipRRect(
             borderRadius: BorderRadius.circular(25),
             child: PageView.builder(
@@ -324,8 +346,6 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
               },
             ),
           ),
-
-          // 2. Indicator Dots (Neeche jo dots aate hain)
           Positioned(
             bottom: 15,
             left: 0,
