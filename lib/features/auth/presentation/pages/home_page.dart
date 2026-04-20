@@ -8,6 +8,7 @@ import 'cart_page.dart';
 import 'notifications_page.dart';
 import 'product_detail_page.dart';
 import 'category_grid_page.dart';
+import 'my_orders_page.dart'; // <-- NAYA IMPORT: My Orders Page yahan add kiya hai
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -147,10 +148,13 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
+          // --- YAHAN TABDEELI KI HAI ---
+          // Profile Picture par click karne se ab My Orders page khulega
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage())),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyOrdersPage())),
             child: const CircleAvatar(radius: 25, backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=rehan')),
           ),
+          // -----------------------------
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,7 +196,7 @@ class _HomePageState extends State<HomePage> {
           builder: (context) => ProductDetailPage(
             title: product['name'] ?? 'Product',
             price: product['price'] ?? '£0.0',
-            imageUrl: product['img'] ?? 'https://via.placeholder.com/150', // FIXED: Pass the image URL
+            imageUrl: product['img'] ?? 'https://via.placeholder.com/150',
           ),
         ),
       ),

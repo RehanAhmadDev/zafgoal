@@ -1,8 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 
-class MyOrdersPage extends StatelessWidget {
+class MyOrdersPage extends StatefulWidget {
   const MyOrdersPage({super.key});
+
+  @override
+  State<MyOrdersPage> createState() => _MyOrdersPageState();
+}
+
+class _MyOrdersPageState extends State<MyOrdersPage> {
+  bool _isLoading = true;
+  List<dynamic> _orders = [];
+
+  // Date ko format karne k liye mahinon k naam ki list
+  final List<String> _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMyOrders();
+  }
+
+  // --- Live Data Database Se Uthane Ka Logic ---
+  Future<void> _fetchMyOrders() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final data = await Supabase.instance.client
+            .from('orders')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', ascending: false);
+
+        if (mounted) {
+          setState(() {
+            _orders = data;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching orders: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,18 +66,46 @@ class MyOrdersPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: ListView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
+          : _orders.isEmpty
+          ? const Center(child: Text('You have no orders yet.', style: TextStyle(color: Colors.grey)))
+          : ListView.builder(
         padding: const EdgeInsets.all(20),
-        children: [
-          _buildOrderCard('ZA-9042', '12 Oct, 2026', '£84.50', 'Delivered', Colors.green),
-          _buildOrderCard('ZA-8831', '05 Oct, 2026', '£12.50', 'Processing', Colors.orange),
-          _buildOrderCard('ZA-8109', '28 Sep, 2026', '£105.00', 'Cancelled', Colors.red),
-        ],
+        itemCount: _orders.length,
+        itemBuilder: (context, index) {
+          final order = _orders[index];
+
+          // --- DATE LOGIC ---
+          DateTime date = DateTime.parse(order['created_at']);
+          String day = date.day.toString().padLeft(2, '0');
+          String month = _months[date.month - 1]; // Mahina yahan se uthayega
+          String year = date.year.toString();
+          String formattedDate = '$day $month, $year'; // Result: 20 Apr, 2026
+
+          // --- COLOR LOGIC ---
+          String status = order['status']?.toString().toLowerCase() ?? 'pending';
+          Color statusColor;
+          if (status == 'delivered' || status == 'completed') {
+            statusColor = Colors.green;
+          } else if (status == 'pending' || status == 'processing') {
+            statusColor = Colors.orange;
+          } else {
+            statusColor = Colors.red;
+          }
+
+          return _buildOrderCard(
+              order['id'].toString(),
+              formattedDate,          // Format ki hui Date paas ho rahi hai
+              order['total_amount'],
+              status.toUpperCase(),
+              statusColor             // Condition wala color paas ho raha hai
+          );
+        },
       ),
     );
   }
 
-  // Order Card design karne wala helper method
   Widget _buildOrderCard(String orderId, String date, String amount, String status, Color statusColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -62,16 +135,16 @@ class MyOrdersPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(date, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+              Text(date, style: const TextStyle(color: Colors.grey, fontSize: 13)), // Date yahan show hogi
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withOpacity(0.1), // Background Color
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   status,
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12), // Text Color
                 ),
               ),
             ],
