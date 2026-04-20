@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert'; // Data ko text may badalne k liye
 
 // 1. Cart Item ka Model
 class CartItem {
@@ -13,61 +15,112 @@ class CartItem {
     required this.name,
     required this.price,
     required this.image,
-    this.quantity = 1, // Default quantity 1
+    this.quantity = 1,
   });
+
+  // Data save karne k liye Map may badalna
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'price': price,
+      'image': image,
+      'quantity': quantity,
+    };
+  }
+
+  // Save kiye hue data ko wapas lene k liye
+  factory CartItem.fromMap(Map<String, dynamic> map) {
+    return CartItem(
+      id: map['id'],
+      name: map['name'],
+      price: map['price'],
+      image: map['image'],
+      quantity: map['quantity'],
+    );
+  }
 }
 
-// 2. Cart Provider (App ka Cart Manager)
+// 2. Cart Provider
 class CartProvider with ChangeNotifier {
-  final List<CartItem> _items = [];
+  List<CartItem> _items = [];
 
-  // Cart k saray items dekhne k liye
   List<CartItem> get items => _items;
-
-  // Cart may kitni items hain (Icon badge k liye)
   int get itemCount => _items.length;
 
-  // --- MISSING 1: Quantity k sath item add karna ---
+  // App khulte hi save kiya hua data load karna
+  CartProvider() {
+    _loadCartData();
+  }
+
+  // --- NAYA LOGIC: Data ko phone may pakka save karna ---
+  Future<void> _saveCartData() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> cartStrings = _items.map((item) => json.encode(item.toMap())).toList();
+    prefs.setStringList('cart_data', cartStrings);
+  }
+
+  // --- NAYA LOGIC: Phone se data wapas lana ---
+  Future<void> _loadCartData() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? cartStrings = prefs.getStringList('cart_data');
+    if (cartStrings != null) {
+      _items = cartStrings.map((itemStr) => CartItem.fromMap(json.decode(itemStr))).toList();
+      notifyListeners();
+    }
+  }
+
   void addToCart(String id, String name, String price, String image, int quantity) {
     int index = _items.indexWhere((item) => item.name == name);
 
     if (index >= 0) {
-      // Agar item pehlay se hai, to nayi quantity us may jama (add) kar do
       _items[index].quantity += quantity;
     } else {
-      // Agar nahi hai, to nayi item list may daal do
-      _items.add(CartItem(
-          id: id,
-          name: name,
-          price: price,
-          image: image,
-          quantity: quantity
-      ));
+      _items.add(CartItem(id: id, name: name, price: price, image: image, quantity: quantity));
     }
+
+    _saveCartData(); // Add karne k bade save karo
     notifyListeners();
   }
 
-  // --- MISSING 2: Item ko cart se nikalna (Delete karna) ---
   void removeItem(String id) {
     _items.removeWhere((item) => item.id == id);
+    _saveCartData(); // Remove karne k bade save karo
     notifyListeners();
   }
 
-  // --- MISSING 3: Cart ko bilkul khali karna (Order place hone k baad) ---
   void clearCart() {
     _items.clear();
+    _saveCartData(); // Clear karne k bade save karo
     notifyListeners();
   }
 
-  // --- MISSING 4: Total Bill (Amount) calculate karna ---
+  // --- Plus aur Minus k liye pakkay functions ---
+  void increaseQuantity(String id) {
+    int index = _items.indexWhere((item) => item.id == id);
+    if (index >= 0) {
+      _items[index].quantity++;
+      _saveCartData();
+      notifyListeners();
+    }
+  }
+
+  void decreaseQuantity(String id) {
+    int index = _items.indexWhere((item) => item.id == id);
+    if (index >= 0 && _items[index].quantity > 1) {
+      _items[index].quantity--;
+      _saveCartData();
+      notifyListeners();
+    } else if (index >= 0 && _items[index].quantity == 1) {
+      removeItem(id);
+    }
+  }
+
   double get totalAmount {
     double total = 0.0;
     for (var item in _items) {
-      // '£2.5' jaise text may se sirf '2.5' nikalna taake math ho sakay
       String cleanPrice = item.price.replaceAll(RegExp(r'[^0-9.]'), '');
       double priceValue = double.tryParse(cleanPrice) ?? 0.0;
-
-      // Price ko quantity se multiply kar k total may jama karna
       total += priceValue * item.quantity;
     }
     return total;

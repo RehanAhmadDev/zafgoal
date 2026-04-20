@@ -24,7 +24,6 @@ class CartPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Search Bar
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: CustomTextField(
@@ -33,7 +32,6 @@ class CartPage extends StatelessWidget {
             ),
           ),
 
-          // Stepper
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
             child: Row(
@@ -78,17 +76,13 @@ class CartPage extends StatelessWidget {
                   itemCount: cart.items.length,
                   itemBuilder: (context, index) {
                     final item = cart.items[index];
-                    return _buildCartItem(
-                      context,
-                      item, // Pura item bhej diya taake logic asan ho
-                    );
+                    return _buildCartItem(context, item);
                   },
                 );
               },
             ),
           ),
 
-          // Checkout Summary
           _buildSummaryCard(context),
         ],
       ),
@@ -142,15 +136,10 @@ class CartPage extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Quantity Minus
+              // --- TABADELI: Provider ka asli function call kiya ---
               GestureDetector(
                 onTap: () {
-                  if(item.quantity > 1) {
-                    item.quantity--;
-                    context.read<CartProvider>().notifyListeners(); // Manual update for demo
-                  } else {
-                    context.read<CartProvider>().removeItem(item.id);
-                  }
+                  context.read<CartProvider>().decreaseQuantity(item.id);
                 },
                 child: _qtyBtn(item.quantity > 1 ? Icons.remove : Icons.delete_outline, isDelete: item.quantity == 1),
               ),
@@ -158,14 +147,13 @@ class CartPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
-              // Quantity Plus
               GestureDetector(
                 onTap: () {
-                  item.quantity++;
-                  context.read<CartProvider>().notifyListeners();
+                  context.read<CartProvider>().increaseQuantity(item.id);
                 },
                 child: _qtyBtn(Icons.add, isDark: true),
               ),
+              // ----------------------------------------------------
             ],
           ),
         ],
@@ -203,7 +191,6 @@ class CartPage extends StatelessWidget {
               const Divider(),
               _summaryRow('Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
               const SizedBox(height: 15),
-              // FIXED: Logic shifted inside function to avoid 'null' error
               PrimaryButton(
                 text: 'Proceed to Checkout',
                 onPressed: () {
