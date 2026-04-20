@@ -1,15 +1,108 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
-
 
 import 'add_address_page.dart';
 import 'add_payment_card_page.dart';
 
-class CheckoutPage extends StatelessWidget {
+class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
 
   @override
+  State<CheckoutPage> createState() => _CheckoutPageState();
+}
+
+class _CheckoutPageState extends State<CheckoutPage> {
+  bool _isLoading = false;
+
+  // --- NAYA LOGIC: Supabase mein Order Save karna ---
+  Future<void> _placeOrder(BuildContext context, CartProvider cart) async {
+    setState(() => _isLoading = true);
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        throw Exception('Please login to place order');
+      }
+
+      // Cart items ko aisi shakal mein lana jo Database mein save ho sakay (JSON)
+      final itemsList = cart.items.map((item) => {
+        'id': item.id,
+        'name': item.name,
+        'price': item.price,
+        'quantity': item.quantity,
+      }).toList();
+
+      // Database mein order ki entry daalna
+      await Supabase.instance.client.from('orders').insert({
+        'user_id': user.id,
+        'total_amount': '£${cart.totalAmount.toStringAsFixed(2)}',
+        'items': itemsList,
+        'status': 'pending'
+      });
+
+      // Agar order successfully lag gaya, toh:
+      if (mounted) {
+        // 1. Cart Khali karo
+        cart.clearCart();
+
+        // 2. Loading hatao
+        setState(() => _isLoading = false);
+
+        // 3. User ko Success ka Dialog dikhao
+        _showSuccessDialog();
+      }
+
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User bahar click kar ke band nahi kar sakta
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Order Successful!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Text('Your order has been placed successfully and is being processed.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              onPressed: () {
+                // Dialog band karein aur wapas Home par le jayen (2 dafa pop)
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF233933)),
+              child: const Text('Back to Home', style: TextStyle(color: Colors.white)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Provider se cart ka data mangwana
+    final cart = context.watch<CartProvider>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -26,26 +119,15 @@ class CheckoutPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Stepper (Active Step: 2) ---
             _buildStepper(),
-
-            // --- Address Section ---
             _buildSectionHeader('Address'),
             _buildAddressCard(context),
-
-            // --- Delivery Method ---
             _buildSectionHeader('Delivery Method'),
             _buildDeliveryMethod(),
-
-            // --- Payment Method ---
             _buildSectionHeader('Payment Method'),
-            // Yahan context pass kiya hai taake navigation ho sakay
             _buildPaymentMethod(context),
-
             const SizedBox(height: 30),
-
-            // --- Order Summary & Confirm Button ---
-            _buildBottomSummary(context),
+            _buildBottomSummary(context, cart), // Cart pass kar diya
           ],
         ),
       ),
@@ -116,10 +198,7 @@ class CheckoutPage extends StatelessWidget {
           IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AddAddressPage()),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAddressPage()));
               }
           ),
         ],
@@ -148,14 +227,10 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  // --- NAYA METHOD: Payment Method with Navigation ---
   Widget _buildPaymentMethod(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AddPaymentCardPage()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage()));
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -178,7 +253,7 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomSummary(BuildContext context) {
+  Widget _buildBottomSummary(BuildContext context, CartProvider cart) {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: const BoxDecoration(
@@ -187,16 +262,19 @@ class CheckoutPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _summaryRow('Order Total :', '105£'),
-          _summaryRow('Delivery :', 'Free'),
+          // Live Provider Total
+          _summaryRow('Order Total :', '£${cart.totalAmount.toStringAsFixed(2)}'),
+          _summaryRow('Delivery :', '£0.00'),
           const Divider(),
-          _summaryRow('Grand Total :', '105£', isTotal: true),
+          _summaryRow('Grand Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
           const SizedBox(height: 20),
-          PrimaryButton(
-              text: 'Confirm Order',
-              onPressed: () {
-                // Yahan Success Page dikhayenge
-              }
+
+          // Agar order lag raha hai toh loading dikhao
+          _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933)))
+              : PrimaryButton(
+            text: 'Confirm Order',
+            onPressed: () => _placeOrder(context, cart),
           ),
         ],
       ),
