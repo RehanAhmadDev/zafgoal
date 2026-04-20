@@ -1,15 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:zafgoal/shared/widgets/primary_button.dart';
+import 'package:provider/provider.dart'; // 1. Provider import kiya
+import 'package:zafgoal/providers/cart_provider.dart'; // 2. Apna CartProvider import kiya
 
-class ProductDetailPage extends StatelessWidget {
+// Isay StatefulWidget bana diya taake Quantity change ho sakay
+class ProductDetailPage extends StatefulWidget {
+  // Database se Product ka ID aur Image bhi mangwana chahiye, abhi k liye mai String lay raha hu
   final String title;
   final String price;
+  final String imageUrl;
 
   const ProductDetailPage({
     super.key,
     required this.title,
     required this.price,
+    this.imageUrl = 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=600', // Default image agar pichlay page se na aye
   });
+
+  @override
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
+}
+
+class _ProductDetailPageState extends State<ProductDetailPage> {
+  // Default quantity 1 hogi
+  int _quantity = 1;
+
+  void _increaseQty() {
+    setState(() {
+      _quantity++;
+    });
+  }
+
+  void _decreaseQty() {
+    setState(() {
+      if (_quantity > 1) {
+        _quantity--;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +58,7 @@ class ProductDetailPage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 1. Search Bar (As per Figma)
+            // 1. Search Bar
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: TextField(
@@ -57,7 +84,7 @@ class ProductDetailPage extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(25),
                     child: Image.network(
-                      'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=600',
+                      widget.imageUrl,
                       height: 250,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -66,16 +93,16 @@ class ProductDetailPage extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Title & Price Info
-                  Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 5),
-                  Text('Price: $price (£0.27 / unit)', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+                  Text('Price: ${widget.price}', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
                   const Text('Brand: ZafGOAL Fresh Select', style: TextStyle(color: Colors.grey, fontSize: 12)),
 
                   const SizedBox(height: 20),
                   const Text('Product Description :', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   const Text(
-                    'Our Class A Large Free Range eggs are sourced directly from trusted British farms where hens are free to roam from dawn until dusk. These eggs are known for their rich, golden yolks and firm whites—perfect for poaching, baking, or a classic Sunday breakfast.',
+                    'Our Class A Large Free Range eggs are sourced directly from trusted British farms where hens are free to roam from dawn until dusk...',
                     style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
                   ),
 
@@ -90,15 +117,21 @@ class ProductDetailPage extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            _qtyActionBtn(Icons.remove),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: Text('1', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            GestureDetector(
+                                onTap: _decreaseQty,
+                                child: _qtyActionBtn(Icons.remove)
                             ),
-                            _qtyActionBtn(Icons.add, isPrimary: true),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Text('$_quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ),
+                            GestureDetector(
+                                onTap: _increaseQty,
+                                child: _qtyActionBtn(Icons.add, isPrimary: true)
+                            ),
                           ],
                         ),
-                        Text(price, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(widget.price, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -118,7 +151,27 @@ class ProductDetailPage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {},
+                      // --- NAYA LOGIC: ADD TO CART ---
+                      onPressed: () {
+                        // CartProvider ka function call kar rahay hain
+                        context.read<CartProvider>().addToCart(
+                          widget.title, // abhi id nahi hai to name ko hi id maan rahay hain
+                          widget.title,
+                          widget.price,
+                          widget.imageUrl,
+                          _quantity, // Selected quantity bhej rahay hain
+                        );
+
+                        // User ko asaan sa message dikhana
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${widget.title} added to cart!'),
+                            duration: const Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: const Color(0xFF233933),
+                          ),
+                        );
+                      },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
