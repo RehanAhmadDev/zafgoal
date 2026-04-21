@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 
+// --- NAYA IMPORT: Detail page yahan add kiya hai ---
+import 'order_detail_page.dart';
+
 class MyOrdersPage extends StatefulWidget {
   const MyOrdersPage({super.key});
 
@@ -94,12 +97,30 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
             statusColor = Colors.red;
           }
 
-          return _buildOrderCard(
-              order['id'].toString(),
-              formattedDate,          // Format ki hui Date paas ho rahi hai
-              order['total_amount'],
-              status.toUpperCase(),
-              statusColor             // Condition wala color paas ho raha hai
+          // --- NAYA LOGIC: GestureDetector lagaya taake click ho sakay ---
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OrderDetailPage(
+                    orderId: order['id'].toString(),
+                    date: formattedDate,
+                    amount: order['total_amount'],
+                    status: status.toUpperCase(),
+                    statusColor: statusColor,
+                    items: order['items'] ?? [], // Yahan hum Database se items bhej rahay hain
+                  ),
+                ),
+              );
+            },
+            child: _buildOrderCard(
+                order['id'].toString(),
+                formattedDate,
+                order['total_amount'],
+                status.toUpperCase(),
+                statusColor
+            ),
           );
         },
       ),
@@ -135,16 +156,16 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(date, style: const TextStyle(color: Colors.grey, fontSize: 13)), // Date yahan show hogi
+              Text(date, style: const TextStyle(color: Colors.grey, fontSize: 13)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1), // Background Color
+                  color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   status,
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12), // Text Color
+                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ),
             ],
