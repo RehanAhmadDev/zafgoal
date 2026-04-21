@@ -4,6 +4,7 @@ import 'package:provider/provider.dart'; // 1. Provider package import kiya
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/features/auth/presentation/pages/splash_page.dart';
 import 'package:zafgoal/providers/cart_provider.dart'; // 2. Apna CartProvider import kiya
+import 'package:zafgoal/providers/favorite_provider.dart'; // <-- 3. Naya FavoriteProvider import kiya
 
 void main() async {
   // Flutter Engine ko initialize karna zaroori hai
@@ -15,12 +16,13 @@ void main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwcm1naGRzeG9jZ2NsZ2t4bWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODgyODYsImV4cCI6MjA5MjE2NDI4Nn0.OPJuSFttS-54RTE8qth9XH-DHcfvlC7IEyvp_USvkMc',
   );
 
-  // 3. Poori app ko Provider k andar wrap kar diya
+  // Poori app ko Provider k andar wrap kar diya
   runApp(
     MultiProvider(
       providers: [
-        // Yahan hum apna CartProvider app ko de rahe hain
+        // Yahan hum apne providers app ko de rahe hain
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => FavoriteProvider()), // <-- YAHAN ADD KIYA
       ],
       child: const MyApp(),
     ),

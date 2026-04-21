@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:zafgoal/features/auth/presentation/pages/profile_page.dart';
 import 'package:zafgoal/features/auth/presentation/pages/search_results_page.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
+import 'package:zafgoal/providers/cart_provider.dart';
+import 'package:zafgoal/providers/favorite_provider.dart';
 
 import 'cart_page.dart';
 import 'notifications_page.dart';
 import 'product_detail_page.dart';
 import 'category_grid_page.dart';
-import 'my_orders_page.dart'; // <-- NAYA IMPORT: My Orders Page yahan add kiya hai
+import 'my_orders_page.dart';
+import 'favorites_page.dart'; // <-- NAYA IMPORT: Favorites Page yahan add kiya hai
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -148,13 +152,10 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
-          // --- YAHAN TABDEELI KI HAI ---
-          // Profile Picture par click karne se ab My Orders page khulega
           GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyOrdersPage())),
             child: const CircleAvatar(radius: 25, backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=rehan')),
           ),
-          // -----------------------------
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,35 +203,76 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Container(
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                child: Image.network(
-                  product['img'] ?? 'https://via.placeholder.com/150',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, size: 40, color: Colors.grey),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    child: Image.network(
+                      product['img'] ?? 'https://via.placeholder.com/150',
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, size: 40, color: Colors.grey),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(product['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product['price'] ?? '', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                      Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(color: const Color(0xFFF1F1F1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.add, size: 20)),
+                      Text(product['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(product['price'] ?? '', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+
+                          GestureDetector(
+                            onTap: () {
+                              context.read<CartProvider>().addToCart(
+                                product['name'], product['name'], product['price'], product['img'] ?? '', 1,
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to cart!'), duration: Duration(seconds: 1)));
+                            },
+                            child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFFF1F1F1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.add, size: 20)),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
+              ],
+            ),
+
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Consumer<FavoriteProvider>(
+                builder: (context, favProvider, child) {
+                  bool isFav = favProvider.isFavorite(product['name']);
+                  return GestureDetector(
+                    onTap: () {
+                      favProvider.toggleFavorite(product);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      ),
+                      child: Icon(
+                        isFav ? Icons.favorite : Icons.favorite_border,
+                        color: isFav ? Colors.red : Colors.grey,
+                        size: 18,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -276,7 +318,11 @@ class _HomePageState extends State<HomePage> {
           IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
           IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () {}),
           const SizedBox(width: 40),
-          IconButton(icon: const Icon(Icons.qr_code_scanner, color: Colors.grey), onPressed: () {}),
+          // --- TABADELI: Yahan FavoritesPage ka link lagaya hai ---
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: Colors.grey),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage())),
+          ),
           IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage()))),
           IconButton(icon: const Icon(Icons.person_outline, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()))),
         ],
@@ -285,7 +331,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// Slider code remains the same as before...
 class HomeBannerSlider extends StatefulWidget {
   const HomeBannerSlider({super.key});
   @override State<HomeBannerSlider> createState() => _HomeBannerSliderState();
