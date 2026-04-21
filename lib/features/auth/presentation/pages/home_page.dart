@@ -12,7 +12,8 @@ import 'notifications_page.dart';
 import 'product_detail_page.dart';
 import 'category_grid_page.dart';
 import 'my_orders_page.dart';
-import 'favorites_page.dart'; // <-- NAYA IMPORT: Favorites Page yahan add kiya hai
+import 'favorites_page.dart';
+import 'category_products_page.dart'; // <-- NAYA IMPORT: Yahan add kiya
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -281,6 +282,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- NAYA LOGIC: Yahan humne Category ko clickable banaya hai ---
   Widget _buildCircularCategories() {
     if (_isLoadingCategories) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Color(0xFF233933))));
     return SizedBox(
@@ -293,12 +295,30 @@ class _HomePageState extends State<HomePage> {
           var cat = _categories[index];
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Column(
-              children: [
-                CircleAvatar(radius: 30, backgroundColor: Colors.white, child: Padding(padding: const EdgeInsets.all(12.0), child: Image.network(cat['img'] ?? '', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey)))),
-                const SizedBox(height: 5),
-                Text(cat['name'] ?? '', style: const TextStyle(fontSize: 12)),
-              ],
+            child: GestureDetector(
+              onTap: () {
+                // Click karne par us specific category k page par le jayega
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CategoryProductsPage(categoryName: cat['name'] ?? ''),
+                  ),
+                );
+              },
+              child: Column(
+                children: [
+                  CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Colors.white,
+                      child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Image.network(cat['img'] ?? '', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey))
+                      )
+                  ),
+                  const SizedBox(height: 5),
+                  Text(cat['name'] ?? '', style: const TextStyle(fontSize: 12)),
+                ],
+              ),
             ),
           );
         },
@@ -318,7 +338,6 @@ class _HomePageState extends State<HomePage> {
           IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
           IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () {}),
           const SizedBox(width: 40),
-          // --- TABADELI: Yahan FavoritesPage ka link lagaya hai ---
           IconButton(
             icon: const Icon(Icons.favorite_border, color: Colors.grey),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage())),
