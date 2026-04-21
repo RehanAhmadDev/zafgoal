@@ -7,7 +7,7 @@ class OrderDetailPage extends StatelessWidget {
   final String amount;
   final String status;
   final Color statusColor;
-  final List<dynamic> items; // Database se aanay wale items ki list
+  final List<dynamic> items;
 
   const OrderDetailPage({
     super.key,
@@ -41,16 +41,14 @@ class OrderDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 1. Order ki Summary (Top Card) ---
             _buildSummaryCard(),
 
             const SizedBox(height: 25),
             const Text('Items Ordered', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
 
-            // --- 2. Items ki List ---
             ListView.builder(
-              shrinkWrap: true, // Scrollable column k andar list laganay k liye zaroori
+              shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: items.length,
               itemBuilder: (context, index) {
@@ -64,7 +62,6 @@ class OrderDetailPage extends StatelessWidget {
     );
   }
 
-  // Upar wala hissa (Total aur Date)
   Widget _buildSummaryCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -99,7 +96,8 @@ class OrderDetailPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Total Amount:', style: TextStyle(color: Colors.grey)),
-              Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDark)),
+              // Yahan bhi £ ka sign lagaya hai
+              Text('£$amount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDark)),
             ],
           ),
         ],
@@ -107,25 +105,42 @@ class OrderDetailPage extends StatelessWidget {
     );
   }
 
-  // Jo products mangwaye hain unka design
+  // --- UPDATE: Product ki picture aur sahi naam add kiya hai ---
   Widget _buildItemCard(dynamic item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Tasweer (Image) ka hissa
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              item['image'] ?? 'https://via.placeholder.com/150', // Agar tasweer na ho toh yeh lagaye
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 50, height: 50, color: Colors.grey.shade200,
+                child: const Icon(Icons.shopping_basket, color: Colors.grey),
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item['name'] ?? 'Product', style: const TextStyle(fontWeight: FontWeight.bold)),
+                // Yahan 'name' ki jagah 'product_name' likha hai
+                Text(item['product_name'] ?? 'Product', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
                 Text('Price: ${item['price']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ),
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),

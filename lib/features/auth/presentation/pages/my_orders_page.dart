@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 
-// --- NAYA IMPORT: Detail page yahan add kiya hai ---
 import 'order_detail_page.dart';
 
 class MyOrdersPage extends StatefulWidget {
@@ -16,7 +15,6 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
   bool _isLoading = true;
   List<dynamic> _orders = [];
 
-  // Date ko format karne k liye mahinon k naam ki list
   final List<String> _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -28,7 +26,6 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
     _fetchMyOrders();
   }
 
-  // --- Live Data Database Se Uthane Ka Logic ---
   Future<void> _fetchMyOrders() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -79,14 +76,12 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
         itemBuilder: (context, index) {
           final order = _orders[index];
 
-          // --- DATE LOGIC ---
           DateTime date = DateTime.parse(order['created_at']);
           String day = date.day.toString().padLeft(2, '0');
-          String month = _months[date.month - 1]; // Mahina yahan se uthayega
+          String month = _months[date.month - 1];
           String year = date.year.toString();
-          String formattedDate = '$day $month, $year'; // Result: 20 Apr, 2026
+          String formattedDate = '$day $month, $year';
 
-          // --- COLOR LOGIC ---
           String status = order['status']?.toString().toLowerCase() ?? 'pending';
           Color statusColor;
           if (status == 'delivered' || status == 'completed') {
@@ -97,7 +92,6 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
             statusColor = Colors.red;
           }
 
-          // --- NAYA LOGIC: GestureDetector lagaya taake click ho sakay ---
           return GestureDetector(
             onTap: () {
               Navigator.push(
@@ -106,10 +100,10 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
                   builder: (context) => OrderDetailPage(
                     orderId: order['id'].toString(),
                     date: formattedDate,
-                    amount: order['total_amount'],
+                    amount: order['total_amount'].toString(),
                     status: status.toUpperCase(),
                     statusColor: statusColor,
-                    items: order['items'] ?? [], // Yahan hum Database se items bhej rahay hain
+                    items: order['items'] ?? [], // Database se items bhej rahay hain
                   ),
                 ),
               );
@@ -117,7 +111,7 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
             child: _buildOrderCard(
                 order['id'].toString(),
                 formattedDate,
-                order['total_amount'],
+                order['total_amount'].toString(),
                 status.toUpperCase(),
                 statusColor
             ),
@@ -149,7 +143,8 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Order #$orderId', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark)),
+              // Yahan £ ka sign lagaya hai
+              Text('£$amount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark)),
             ],
           ),
           const SizedBox(height: 10),
