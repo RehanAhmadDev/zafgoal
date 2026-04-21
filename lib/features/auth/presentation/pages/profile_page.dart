@@ -1,11 +1,80 @@
 import 'package:flutter/material.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart'; // NAYA IMPORT
 
 import 'add_payment_card_page.dart';
 import 'my_orders_page.dart';
 
-class ProfilePage extends StatelessWidget {
+// 1. Isay StatefulWidget mein badal diya
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  // 2. Data store karne ke liye variables
+  String _fullName = 'Loading...';
+  String _email = 'Loading...';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  // --- NAYA LOGIC: Supabase se User Data Uthana ---
+  Future<void> _fetchUserProfile() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final email = user.email ?? 'No Email';
+
+        final data = await Supabase.instance.client
+            .from('profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .single();
+
+        if (mounted) {
+          setState(() {
+            _email = email;
+            _fullName = data['full_name'] ?? 'User';
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching profile: $e');
+      if (mounted) {
+        setState(() {
+          _fullName = 'Guest User';
+          _email = 'Not logged in';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // --- NAYA LOGIC: Logout Karna ---
+  Future<void> _signOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (mounted) {
+        // Logout hone ke baad app ki sab se pehli screen par bhej dega
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +90,9 @@ class ProfilePage extends StatelessWidget {
         title: const Text('Profile', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933)))
+          : SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 20),
@@ -55,13 +126,14 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 15),
-        const Text(
-          'Rehan Ahmad',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        // 3. Yahan Live Data lagaya
+        Text(
+          _fullName,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        const Text(
-          'rehan.dev@example.com',
-          style: TextStyle(color: Colors.grey),
+        Text(
+          _email,
+          style: const TextStyle(color: Colors.grey),
         ),
       ],
     );
@@ -93,8 +165,6 @@ class ProfilePage extends StatelessWidget {
               }
           ),
           _buildSettingsTile(Icons.location_on_outlined, 'Address Book'),
-
-          // --- UPDATE: Payment Methods Navigation ---
           _buildSettingsTile(
               Icons.payment_outlined,
               'Payment Methods',
@@ -105,7 +175,6 @@ class ProfilePage extends StatelessWidget {
                 );
               }
           ),
-
           _buildSettingsTile(Icons.security_outlined, 'Privacy Policy'),
         ],
       ),
@@ -132,7 +201,8 @@ class ProfilePage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: TextButton(
-        onPressed: () {},
+        // 4. Logout Function call kiya
+        onPressed: _signOut,
         style: TextButton.styleFrom(
           foregroundColor: Colors.red,
           minimumSize: const Size(double.infinity, 50),
