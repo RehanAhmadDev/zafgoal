@@ -136,7 +136,6 @@ class CartPage extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // --- TABADELI: Provider ka asli function call kiya ---
               GestureDetector(
                 onTap: () {
                   context.read<CartProvider>().decreaseQuantity(item.id);
@@ -153,7 +152,6 @@ class CartPage extends StatelessWidget {
                 },
                 child: _qtyBtn(Icons.add, isDark: true),
               ),
-              // ----------------------------------------------------
             ],
           ),
         ],
@@ -191,15 +189,51 @@ class CartPage extends StatelessWidget {
               const Divider(),
               _summaryRow('Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
               const SizedBox(height: 15),
+
+              // --- NAYA LOGIC: Asli Order Place karne ka button ---
               PrimaryButton(
-                text: 'Proceed to Checkout',
-                onPressed: () {
+                text: 'Place Order',
+                onPressed: () async {
                   if (cart.items.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Your cart is empty!')),
                     );
+                    return; // Agar cart khali hai toh aage nahi barhna
+                  }
+
+                  // 1. Loading dikhane k liye ek chota dialog
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false, // User screen par click kar k band nahi kar sakta
+                    builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFF233933))),
+                  );
+
+                  // 2. Provider wala order placement function call kiya
+                  bool isSuccess = await cart.placeOrder();
+
+                  // Flutter ka lazmi check: Dialog band karne se pehle ensure karein k screen mojood hai
+                  if (!context.mounted) return;
+
+                  // 3. Loading dialog band karein
+                  Navigator.pop(context);
+
+                  // 4. Natija (Result) dikhayein
+                  if (isSuccess) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Order Placed Successfully! 🎉'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    // Order kamyab hone k bade wapas home screen par le jayein
+                    Navigator.pop(context);
                   } else {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const CheckoutPage()));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Failed to place order. Try again.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
                 },
               ),

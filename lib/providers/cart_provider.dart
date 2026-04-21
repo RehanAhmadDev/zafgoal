@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert'; // Data ko text may badalne k liye
+import 'package:supabase_flutter/supabase_flutter.dart'; // <-- NAYA IMPORT: Supabase k liye
+import 'dart:convert';
 
-// 1. Cart Item ka Model
 class CartItem {
   final String id;
   final String name;
@@ -18,7 +18,6 @@ class CartItem {
     this.quantity = 1,
   });
 
-  // Data save karne k liye Map may badalna
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -29,7 +28,6 @@ class CartItem {
     };
   }
 
-  // Save kiye hue data ko wapas lene k liye
   factory CartItem.fromMap(Map<String, dynamic> map) {
     return CartItem(
       id: map['id'],
@@ -41,26 +39,22 @@ class CartItem {
   }
 }
 
-// 2. Cart Provider
 class CartProvider with ChangeNotifier {
   List<CartItem> _items = [];
 
   List<CartItem> get items => _items;
   int get itemCount => _items.length;
 
-  // App khulte hi save kiya hua data load karna
   CartProvider() {
     _loadCartData();
   }
 
-  // --- NAYA LOGIC: Data ko phone may pakka save karna ---
   Future<void> _saveCartData() async {
     final prefs = await SharedPreferences.getInstance();
     List<String> cartStrings = _items.map((item) => json.encode(item.toMap())).toList();
     prefs.setStringList('cart_data', cartStrings);
   }
 
-  // --- NAYA LOGIC: Phone se data wapas lana ---
   Future<void> _loadCartData() async {
     final prefs = await SharedPreferences.getInstance();
     List<String>? cartStrings = prefs.getStringList('cart_data');
@@ -79,23 +73,22 @@ class CartProvider with ChangeNotifier {
       _items.add(CartItem(id: id, name: name, price: price, image: image, quantity: quantity));
     }
 
-    _saveCartData(); // Add karne k bade save karo
+    _saveCartData();
     notifyListeners();
   }
 
   void removeItem(String id) {
     _items.removeWhere((item) => item.id == id);
-    _saveCartData(); // Remove karne k bade save karo
+    _saveCartData();
     notifyListeners();
   }
 
   void clearCart() {
     _items.clear();
-    _saveCartData(); // Clear karne k bade save karo
+    _saveCartData();
     notifyListeners();
   }
 
-  // --- Plus aur Minus k liye pakkay functions ---
   void increaseQuantity(String id) {
     int index = _items.indexWhere((item) => item.id == id);
     if (index >= 0) {
@@ -124,5 +117,45 @@ class CartProvider with ChangeNotifier {
       total += priceValue * item.quantity;
     }
     return total;
+  }
+
+  // --- NAYA LOGIC: Checkout & Place Order ---
+  Future<bool> placeOrder() async {
+    if (_items.isEmpty) return false;
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+
+      // Check karna k user login hai ya nahi
+      if (user == null) {
+        debugPrint('User not logged in!');
+        return false;
+      }
+
+      // 1. Cart ka data Supabase k format (JSON) may badalna
+      List<Map<String, dynamic>> orderItemsJson = _items.map((item) => {
+        'product_name': item.name,
+        'price': item.price,
+        'quantity': item.quantity,
+        'image': item.image
+      }).toList();
+
+      // 2. Supabase k 'orders' table may bhejna
+      await supabase.from('orders').insert({
+        'user_id': user.id,
+        'total_amount': totalAmount.toStringAsFixed(2),
+        'status': 'Pending', // Shuru may order pending hota hai
+        'items': orderItemsJson, // Yeh jsonb wale column may jayega
+      });
+
+      // 3. Agar order successful ho jaye toh cart khali kar do
+      clearCart();
+      return true;
+
+    } catch (e) {
+      debugPrint('Error placing order: $e');
+      return false;
+    }
   }
 }
