@@ -13,7 +13,7 @@ import 'product_detail_page.dart';
 import 'category_grid_page.dart';
 import 'my_orders_page.dart';
 import 'favorites_page.dart';
-import 'category_products_page.dart'; // <-- NAYA IMPORT: Yahan add kiya
+import 'category_products_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,6 +24,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String _userName = 'Loading...';
+  String? _avatarUrl; // --- NAYA VARIABLE: Tasweer k URL k liye ---
+
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _freshFruits = [];
   List<Map<String, dynamic>> _dailyDairy = [];
@@ -37,19 +39,21 @@ class _HomePageState extends State<HomePage> {
     _fetchHomeData();
   }
 
+  // --- UPDATE: Naam k sath ab avatar_url bhi mangwa rahay hain ---
   Future<void> _fetchUserData() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         final data = await Supabase.instance.client
             .from('profiles')
-            .select('full_name')
+            .select() // select() khali chorne se sara data aa jata hai
             .eq('id', user.id)
             .single();
 
         if (mounted) {
           setState(() {
             _userName = data['full_name'] ?? 'User';
+            _avatarUrl = data['avatar_url']; // Tasweer database se set ki
           });
         }
       }
@@ -153,9 +157,22 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
+          // --- UPDATE: Yahan Live Tasweer aur Auto-Refresh (.then) laga diya hai ---
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyOrdersPage())),
-            child: const CircleAvatar(radius: 25, backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=rehan')),
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfilePage())
+              ).then((_) {
+                _fetchUserData(); // Wapas aane par nayi tasweer layega
+              });
+            },
+            child: CircleAvatar(
+              radius: 25,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+              child: _avatarUrl == null ? const Icon(Icons.person, color: Colors.white) : null,
+            ),
           ),
           const SizedBox(width: 12),
           Column(
@@ -282,7 +299,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- NAYA LOGIC: Yahan humne Category ko clickable banaya hai ---
   Widget _buildCircularCategories() {
     if (_isLoadingCategories) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Color(0xFF233933))));
     return SizedBox(
@@ -297,7 +313,6 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: GestureDetector(
               onTap: () {
-                // Click karne par us specific category k page par le jayega
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -343,7 +358,18 @@ class _HomePageState extends State<HomePage> {
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage())),
           ),
           IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage()))),
-          IconButton(icon: const Icon(Icons.person_outline, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()))),
+          // --- UPDATE: Bottom bar k Profile icon par bhi .then() laga diya hai ---
+          IconButton(
+              icon: const Icon(Icons.person_outline, color: Colors.grey),
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProfilePage())
+                ).then((_) {
+                  _fetchUserData(); // Wapas aane par refresh
+                });
+              }
+          ),
         ],
       ),
     );

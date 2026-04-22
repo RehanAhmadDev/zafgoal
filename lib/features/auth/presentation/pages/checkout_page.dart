@@ -6,6 +6,8 @@ import 'package:zafgoal/shared/widgets/primary_button.dart';
 
 import 'add_address_page.dart';
 import 'add_payment_card_page.dart';
+// Note: Humay yahan address_book_page.dart import karni hogi jab hum wo banayenge
+// import 'address_book_page.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -17,8 +19,54 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   bool _isLoading = false;
 
-  // --- NAYA LOGIC: Supabase mein Order Save karna ---
+  // --- NAYA LOGIC: Address store karne k liye variables ---
+  Map<String, dynamic>? _selectedAddress;
+  bool _isLoadingAddress = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDefaultAddress();
+  }
+
+  // --- NAYA LOGIC: Supabase se Address mangwana ---
+  Future<void> _fetchDefaultAddress() async {
+    setState(() => _isLoadingAddress = true);
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        // User ka pehla address utha kar lao
+        final data = await Supabase.instance.client
+            .from('addresses')
+            .select()
+            .eq('user_id', user.id)
+            .limit(1);
+
+        if (mounted) {
+          setState(() {
+            if (data.isNotEmpty) {
+              _selectedAddress = data.first;
+            }
+            _isLoadingAddress = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching address: $e');
+      if (mounted) setState(() => _isLoadingAddress = false);
+    }
+  }
+
+  // --- UPDATE: Order Save karne k logic may Address shamil kiya ---
   Future<void> _placeOrder(BuildContext context, CartProvider cart) async {
+    // Validation: Agar address nahi hai to order mat lagao
+    if (_selectedAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add a delivery address first'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -28,7 +76,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         throw Exception('Please login to place order');
       }
 
-      // Cart items ko aisi shakal mein lana jo Database mein save ho sakay (JSON)
       final itemsList = cart.items.map((item) => {
         'id': item.id,
         'name': item.name,
@@ -36,23 +83,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
         'quantity': item.quantity,
       }).toList();
 
-      // Database mein order ki entry daalna
+      // Database mein order ki entry daalna (Sath may address bhi)
       await Supabase.instance.client.from('orders').insert({
         'user_id': user.id,
         'total_amount': '£${cart.totalAmount.toStringAsFixed(2)}',
         'items': itemsList,
+        'delivery_address': _selectedAddress!['full_address'], // NAYA: Address order k sath save hoga
         'status': 'pending'
       });
 
-      // Agar order successfully lag gaya, toh:
       if (mounted) {
-        // 1. Cart Khali karo
         cart.clearCart();
-
-        // 2. Loading hatao
         setState(() => _isLoading = false);
-
-        // 3. User ko Success ka Dialog dikhao
         _showSuccessDialog();
       }
 
@@ -69,7 +111,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void _showSuccessDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // User bahar click kar ke band nahi kar sakta
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
@@ -85,7 +127,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
           Center(
             child: ElevatedButton(
               onPressed: () {
-                // Dialog band karein aur wapas Home par le jayen (2 dafa pop)
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
               },
@@ -100,7 +141,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Provider se cart ka data mangwana
     final cart = context.watch<CartProvider>();
 
     return Scaffold(
@@ -120,14 +160,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildStepper(),
-            _buildSectionHeader('Address'),
+
+            // --- UPDATE: Yahan Address section ko zinda (dynamic) kiya hai ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildSectionHeader('Address'),
+                if (_selectedAddress != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 20),
+                    child: TextButton(
+                      onPressed: () {
+                        // TODO: Yahan Address Book page khulega
+                      },
+                      child: const Text('Change', style: TextStyle(color: Color(0xFF233933))),
+                    ),
+                  )
+              ],
+            ),
             _buildAddressCard(context),
+
             _buildSectionHeader('Delivery Method'),
             _buildDeliveryMethod(),
             _buildSectionHeader('Payment Method'),
             _buildPaymentMethod(context),
             const SizedBox(height: 30),
-            _buildBottomSummary(context, cart), // Cart pass kar diya
+            _buildBottomSummary(context, cart),
           ],
         ),
       ),
@@ -177,7 +235,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  // --- UPDATE: UI ko live data se jor diya ---
   Widget _buildAddressCard(BuildContext context) {
+    if (_isLoadingAddress) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
+    }
+
+    if (_selectedAddress == null) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAddressPage())).then((_) {
+            _fetchDefaultAddress(); // Wapas ane par naya address fetch karega
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid)),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_location_alt_outlined, color: Colors.grey),
+              SizedBox(width: 10),
+              Text('Add Delivery Address', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(15),
@@ -186,20 +272,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         children: [
           const Icon(Icons.location_on_outlined, color: Colors.green),
           const SizedBox(width: 15),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Home Address', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('Main Street, I-8 Islamabad', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(_selectedAddress!['title'] ?? 'Address', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(_selectedAddress!['full_address'] ?? 'No detail provided', style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
-          ),
-          IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAddressPage()));
-              }
           ),
         ],
       ),
@@ -262,14 +342,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ),
       child: Column(
         children: [
-          // Live Provider Total
           _summaryRow('Order Total :', '£${cart.totalAmount.toStringAsFixed(2)}'),
           _summaryRow('Delivery :', '£0.00'),
           const Divider(),
           _summaryRow('Grand Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
           const SizedBox(height: 20),
 
-          // Agar order lag raha hai toh loading dikhao
           _isLoading
               ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933)))
               : PrimaryButton(
