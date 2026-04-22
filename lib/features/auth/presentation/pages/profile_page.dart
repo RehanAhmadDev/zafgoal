@@ -62,11 +62,18 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // --- NAYA LOGIC: Gallery se image select aur Supabase pe Upload ---
+  // --- NAYA LOGIC: Gallery se image select aur Supabase pe Upload (With Cache Busting & Compression) ---
   Future<void> _uploadProfilePicture() async {
     try {
       final picker = ImagePicker();
-      final imageFile = await picker.pickImage(source: ImageSource.gallery);
+
+      // Yahan humne Compression (Size chota karne ka) logic lagaya hai
+      final imageFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50, // Tasweer ki quality 50% kar dega taake app crash na ho
+        maxWidth: 800,    // Chaurai 800 pixels se zyada nahi hogi
+        maxHeight: 800,   // Lambai 800 pixels se zyada nahi hogi
+      );
 
       if (imageFile == null) return; // User ne cancel kar diya
 
@@ -91,19 +98,24 @@ class _ProfilePageState extends State<ProfilePage> {
           .from('avatars')
           .getPublicUrl(fileName);
 
+      // --- ASALI JADOO YAHAN HAI (Cache Busting) ---
+      // Waqt (timestamp) dalne se Flutter fauran nayi tasweer load karega
+      final String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final String updatedUrl = '$publicUrl?t=$timeStamp';
+
       // 3. Database k 'profiles' table may naya link save karna
       await Supabase.instance.client
           .from('profiles')
-          .update({'avatar_url': publicUrl})
+          .update({'avatar_url': updatedUrl})
           .eq('id', user.id);
 
       if (mounted) {
         setState(() {
-          _avatarUrl = publicUrl; // Screen par nayi tasweer dikhane k liye
+          _avatarUrl = updatedUrl; // Screen par foran nayi tasweer dikhane k liye
           _isUploading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Profile picture updated safely!'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
