@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+// Apne provider ka rasta check kar lein agar red line aaye
+import 'package:zafgoal/providers/notification_provider.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
@@ -14,49 +17,65 @@ class NotificationsPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Notifications', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('Notifications',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           IconButton(icon: const Icon(Icons.more_vert, color: Colors.black), onPressed: () {}),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      body: Consumer<NotificationProvider>(
+        builder: (context, notiProvider, child) {
+          // 1. Agar data load ho raha ho
+          if (notiProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
+          }
+
+          // 2. Agar koi notification na ho
+          if (notiProvider.notifications.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          // 3. Asli data ki list
+          return RefreshIndicator(
+            onRefresh: () => notiProvider.fetchNotifications(),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: notiProvider.notifications.length,
+              itemBuilder: (context, index) {
+                final note = notiProvider.notifications[index];
+
+                return _buildNotificationItem(
+                  icon: Icons.notifications_active_outlined, // Aap db se bhi icon le sakte hain
+                  title: note['title'] ?? 'Notification',
+                  subtitle: note['subtitle'] ?? '',
+                  time: 'Just now', // Isay format kiya ja sakta hai
+                  details: note['details'],
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Khali screen ka design
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('Today', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          Icon(Icons.notifications_none, size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 15),
-          _buildNotificationItem(
-            icon: Icons.check_circle_outline,
-            title: 'New Order Received!',
-            subtitle: 'Order #ZA-9042 — £84.50',
-            time: '9:24pm',
-            details: 'Items: 12 (Groceries & Electronics) Delivery: Priority (1-Hour Slot) [View Order]',
-          ),
-          _buildNotificationItem(
-            icon: Icons.refresh,
-            title: 'POS / In-Store Purchase',
-            subtitle: 'POS Transaction #9942 • £12.50',
-            time: '12 mins',
-            details: 'Station: Register 02 • Cashier: David',
-          ),
-          _buildNotificationItem(
-            icon: Icons.local_shipping_outlined,
-            title: 'High-Value Order',
-            subtitle: '#12045 • £285.00',
-            time: '5 mins',
-            details: 'Customer: Emma Watson • 12 items Status: Payment Verified',
-          ),
-          _buildNotificationItem(
-            icon: Icons.payment,
-            title: 'Payment Successful',
-            subtitle: 'Your payment was successful. Check your email for digital receipt.',
-            time: '9:24pm',
-          ),
+          const Text('No notifications yet',
+              style: TextStyle(fontSize: 16, color: Colors.grey, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
+  // Aap ka banaya hua original design (Same to Same)
   Widget _buildNotificationItem({
     required IconData icon,
     required String title,
@@ -76,7 +95,7 @@ class NotificationsPage extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: const Color(0xFFF5F5F5), shape: BoxShape.circle),
+            decoration: const BoxDecoration(color: Color(0xFFF5F5F5), shape: BoxShape.circle),
             child: Icon(icon, color: Colors.black, size: 20),
           ),
           const SizedBox(width: 15),

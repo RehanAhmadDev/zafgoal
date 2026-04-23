@@ -39,6 +39,48 @@ class _HomePageState extends State<HomePage> {
     _fetchHomeData();
   }
 
+  // --- UPDATE: Real-time Testing Function with Success Alert ---
+  Future<void> sendTestNotification() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: Please login first!'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+
+    try {
+      // Database mein row insert karna
+      await Supabase.instance.client.from('notifications').insert({
+        'user_id': user.id,
+        'title': 'Order Placed! 🛍️',
+        'subtitle': 'Aap ka naya order confirm ho gaya hai.',
+        'details': 'Order ID: #ZG-${DateTime.now().millisecond} • Status: Pending',
+      });
+
+      // Kamyabi ka message dikhana
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification Sent Successfully! 🎉'),
+            backgroundColor: Color(0xFF233933),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending notification: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _fetchUserData() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -71,12 +113,9 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _categories = List<Map<String, dynamic>>.from(categoriesData);
-
           final allProducts = List<Map<String, dynamic>>.from(productsData);
-
           _freshFruits = allProducts.where((p) => p['category'] == 'Fresh Fruits').toList();
           _dailyDairy = allProducts.where((p) => p['category'] == 'Daily Dairy').toList();
-
           _isLoadingCategories = false;
           _isLoadingProducts = false;
         });
@@ -145,8 +184,9 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(context),
+      // --- UPDATE: Floating Button ab asli Notification bhejega ---
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => sendTestNotification(),
         backgroundColor: const Color(0xFF233933),
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -280,7 +320,6 @@ class _HomePageState extends State<HomePage> {
                   bool isFav = favProvider.isFavorite(pName);
                   return GestureDetector(
                     onTap: () {
-                      // Map strictly ensure kiya hai
                       Map<String, dynamic> prodMap = {
                         'name': pName,
                         'price': pPrice,
@@ -328,7 +367,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CategoryProductsPage(categoryName: cat['name']?.toString() ?? ''),
+                    builder: (context) => CategoryProductsPage(categoryName: cat['name'] ?? ''),
                   ),
                 );
               },
@@ -339,11 +378,11 @@ class _HomePageState extends State<HomePage> {
                       backgroundColor: Colors.white,
                       child: Padding(
                           padding: const EdgeInsets.all(12.0),
-                          child: Image.network(cat['img']?.toString() ?? '', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey))
+                          child: Image.network(cat['img'] ?? '', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey))
                       )
                   ),
                   const SizedBox(height: 5),
-                  Text(cat['name']?.toString() ?? '', style: const TextStyle(fontSize: 12)),
+                  Text(cat['name'] ?? '', style: const TextStyle(fontSize: 12)),
                 ],
               ),
             ),
@@ -357,7 +396,6 @@ class _HomePageState extends State<HomePage> {
   Widget _buildNotificationIcon() => Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.notifications_none_outlined));
 
   Widget _buildBottomNav(BuildContext context) {
-    // Height error se bachne k liye container may wrap kiya
     return Container(
       color: Colors.white,
       child: BottomAppBar(
