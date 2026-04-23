@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // NAYA IMPORT CACHING KE LIYE
+
 import 'package:zafgoal/features/auth/presentation/pages/profile_page.dart';
 import 'package:zafgoal/features/auth/presentation/pages/search_results_page.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
@@ -471,7 +473,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// --- PROFESSIONAL UPDATE: Dynamic Supabase Banner Slider ---
+// --- PROFESSIONAL UPDATE: Cached Dynamic Supabase Banner Slider ---
 class HomeBannerSlider extends StatefulWidget {
   const HomeBannerSlider({super.key});
 
@@ -518,7 +520,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     }
 
     if (_bannerImages.isEmpty) {
-      return const SizedBox.shrink(); // Agar banners na hon toh space hide kar dega
+      return const SizedBox.shrink();
     }
 
     return Container(
@@ -532,11 +534,25 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
               child: PageView.builder(
                   onPageChanged: (index) => setState(() => _currentPage = index),
                   itemCount: _bannerImages.length,
-                  itemBuilder: (context, index) => Image.network(
-                    _bannerImages[index],
+                  itemBuilder: (context, index) => CachedNetworkImage(
+                    imageUrl: _bannerImages[index],
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF233933),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                      ),
+                    ),
                   )
               )
           ),
