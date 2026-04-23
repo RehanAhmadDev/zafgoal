@@ -190,51 +190,25 @@ class CartPage extends StatelessWidget {
               _summaryRow('Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
               const SizedBox(height: 15),
 
-              // --- NAYA LOGIC: Asli Order Place karne ka button ---
+              // --- UPDATE: Dummy logic hata kar Checkout Page par bhejne ka connection laga diya ---
               PrimaryButton(
-                text: 'Place Order',
-                onPressed: () async {
+                text: 'Checkout',
+                onPressed: () {
                   if (cart.items.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Your cart is empty!')),
+                      const SnackBar(
+                          content: Text('Your cart is empty!'),
+                          backgroundColor: Colors.red
+                      ),
                     );
-                    return; // Agar cart khali hai toh aage nahi barhna
+                    return;
                   }
 
-                  // 1. Loading dikhane k liye ek chota dialog
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false, // User screen par click kar k band nahi kar sakta
-                    builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFF233933))),
+                  // Checkout Page par le jane ka asan navigation
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CheckoutPage()),
                   );
-
-                  // 2. Provider wala order placement function call kiya
-                  bool isSuccess = await cart.placeOrder();
-
-                  // Flutter ka lazmi check: Dialog band karne se pehle ensure karein k screen mojood hai
-                  if (!context.mounted) return;
-
-                  // 3. Loading dialog band karein
-                  Navigator.pop(context);
-
-                  // 4. Natija (Result) dikhayein
-                  if (isSuccess) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Order Placed Successfully! 🎉'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                    // Order kamyab hone k bade wapas home screen par le jayein
-                    Navigator.pop(context);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Failed to place order. Try again.'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
                 },
               ),
             ],

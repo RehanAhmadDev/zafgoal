@@ -92,26 +92,32 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
             statusColor = Colors.red;
           }
 
+          // --- UPDATE: Order ID ko chota aur khubsoorat banaya ---
+          String fullOrderId = order['id'].toString();
+          String displayOrderId = fullOrderId.length > 8
+              ? fullOrderId.substring(0, 8).toUpperCase()
+              : fullOrderId.toUpperCase();
+
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => OrderDetailPage(
-                    orderId: order['id'].toString(),
+                    orderId: displayOrderId, // Chota ID aagay bheja
                     date: formattedDate,
                     amount: order['total_amount'].toString(),
                     status: status.toUpperCase(),
                     statusColor: statusColor,
-                    items: order['items'] ?? [], // Database se items bhej rahay hain
+                    items: order['items'] ?? [],
                   ),
                 ),
               );
             },
             child: _buildOrderCard(
-                order['id'].toString(),
+                displayOrderId, // Chota ID card may dikhaya
                 formattedDate,
-                order['total_amount'].toString(),
+                order['total_amount'].toString(), // Database may pehle se £ mojood hai
                 status.toUpperCase(),
                 statusColor
             ),
@@ -143,8 +149,8 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Order #$orderId', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              // Yahan £ ka sign lagaya hai
-              Text('£$amount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark)),
+              // --- UPDATE: Yahan se izafi '£' hata diya hai ---
+              Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark)),
             ],
           ),
           const SizedBox(height: 10),

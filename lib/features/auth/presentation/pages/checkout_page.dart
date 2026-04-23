@@ -6,8 +6,8 @@ import 'package:zafgoal/shared/widgets/primary_button.dart';
 
 import 'add_address_page.dart';
 import 'add_payment_card_page.dart';
-// Note: Humay yahan address_book_page.dart import karni hogi jab hum wo banayenge
-// import 'address_book_page.dart';
+import 'address_book_page.dart';
+import 'order_detail_page.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -19,50 +19,85 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   bool _isLoading = false;
 
-  // --- NAYA LOGIC: Address store karne k liye variables ---
   Map<String, dynamic>? _selectedAddress;
   bool _isLoadingAddress = true;
+
+  Map<String, dynamic>? _selectedCard;
+  bool _isLoadingCard = true;
 
   @override
   void initState() {
     super.initState();
+    // WidgetsBinding use karne ki ab zarurat nahi, initState may seedha call karein
     _fetchDefaultAddress();
+    _fetchDefaultCard();
   }
 
-  // --- NAYA LOGIC: Supabase se Address mangwana ---
+  // --- FIX: Sab se naya address fetch karne ka logic (No Red Line) ---
   Future<void> _fetchDefaultAddress() async {
+    if (!mounted) return;
     setState(() => _isLoadingAddress = true);
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        // User ka pehla address utha kar lao
         final data = await Supabase.instance.client
             .from('addresses')
             .select()
             .eq('user_id', user.id)
+            .order('created_at', ascending: false) // Sahi Tareeqa: No curly braces
             .limit(1);
 
         if (mounted) {
           setState(() {
-            if (data.isNotEmpty) {
-              _selectedAddress = data.first;
-            }
+            _selectedAddress = data.isNotEmpty ? data.first : null;
             _isLoadingAddress = false;
           });
         }
       }
     } catch (e) {
-      debugPrint('Error fetching address: $e');
+      debugPrint('Address Error: $e');
       if (mounted) setState(() => _isLoadingAddress = false);
     }
   }
 
-  // --- UPDATE: Order Save karne k logic may Address shamil kiya ---
+  // --- FIX: Sab se naya card fetch karne ka logic (No Red Line) ---
+  Future<void> _fetchDefaultCard() async {
+    if (!mounted) return;
+    setState(() => _isLoadingCard = true);
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final data = await Supabase.instance.client
+            .from('payment_cards')
+            .select()
+            .eq('user_id', user.id)
+            .order('created_at', ascending: false) // Sahi Tareeqa: No curly braces
+            .limit(1);
+
+        if (mounted) {
+          setState(() {
+            _selectedCard = data.isNotEmpty ? data.first : null;
+            _isLoadingCard = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Card Error: $e');
+      if (mounted) setState(() => _isLoadingCard = false);
+    }
+  }
+
   Future<void> _placeOrder(BuildContext context, CartProvider cart) async {
-    // Validation: Agar address nahi hai to order mat lagao
     if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add a delivery address first'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (_selectedCard == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add a payment method first'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -71,10 +106,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
-
-      if (user == null) {
-        throw Exception('Please login to place order');
-      }
+      if (user == null) throw Exception('Please login to place order');
 
       final itemsList = cart.items.map((item) => {
         'id': item.id,
@@ -83,19 +115,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
         'quantity': item.quantity,
       }).toList();
 
-      // Database mein order ki entry daalna (Sath may address bhi)
-      await Supabase.instance.client.from('orders').insert({
+      final response = await Supabase.instance.client.from('orders').insert({
         'user_id': user.id,
         'total_amount': '£${cart.totalAmount.toStringAsFixed(2)}',
         'items': itemsList,
-        'delivery_address': _selectedAddress!['full_address'], // NAYA: Address order k sath save hoga
+        'delivery_address': _selectedAddress!['full_address'],
         'status': 'pending'
-      });
+      }).select().single();
 
       if (mounted) {
+        String newOrderId = response['id'].toString();
+        String displayId = newOrderId.length > 8 ? newOrderId.substring(0, 8).toUpperCase() : newOrderId.toUpperCase();
+
         cart.clearCart();
         setState(() => _isLoading = false);
-        _showSuccessDialog();
+        _showSuccessDialog(displayId, response['total_amount'].toString(), response['items']);
       }
 
     } catch (e) {
@@ -108,35 +142,47 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(String orderId, String amount, List<dynamic> items) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Order Successful!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            Text('Your order has been placed successfully and is being processed.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+            const Icon(Icons.check_circle, color: Colors.green, size: 60),
+            const SizedBox(height: 15),
+            const Text('Order Successful!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text('Order #$orderId has been placed.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 25),
+            const CircularProgressIndicator(color: Color(0xFF233933)),
+            const SizedBox(height: 15),
+            const Text('Redirecting to receipt...', style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF233933)),
-              child: const Text('Back to Home', style: TextStyle(color: Colors.white)),
-            ),
-          )
-        ],
       ),
     );
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OrderDetailPage(
+              orderId: orderId,
+              date: "Just Now",
+              amount: amount,
+              status: "PENDING",
+              statusColor: Colors.orange,
+              items: items,
+            ),
+          ),
+        );
+      }
+    });
   }
 
   @override
@@ -161,7 +207,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
           children: [
             _buildStepper(),
 
-            // --- UPDATE: Yahan Address section ko zinda (dynamic) kiya hai ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -170,8 +215,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   Padding(
                     padding: const EdgeInsets.only(right: 20),
                     child: TextButton(
-                      onPressed: () {
-                        // TODO: Yahan Address Book page khulega
+                      onPressed: () async {
+                        // Refresh logic after return
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AddressBookPage()),
+                        );
+                        _fetchDefaultAddress();
                       },
                       child: const Text('Change', style: TextStyle(color: Color(0xFF233933))),
                     ),
@@ -235,7 +285,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  // --- UPDATE: UI ko live data se jor diya ---
   Widget _buildAddressCard(BuildContext context) {
     if (_isLoadingAddress) {
       return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
@@ -245,7 +294,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return GestureDetector(
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAddressPage())).then((_) {
-            _fetchDefaultAddress(); // Wapas ane par naya address fetch karega
+            _fetchDefaultAddress();
           });
         },
         child: Container(
@@ -298,7 +347,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             children: [
               Icon(Icons.local_shipping_outlined, color: Colors.orange),
               SizedBox(width: 15),
-              Text('Standard Delivery (Free)', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text('Standard Delivery (Free)', style: TextStyle(fontWeight: FontWeight.w500)),
             ],
           ),
           Icon(Icons.keyboard_arrow_down),
@@ -308,25 +357,57 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Widget _buildPaymentMethod(BuildContext context) {
+    if (_isLoadingCard) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
+    }
+
+    if (_selectedCard == null) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage())).then((_) {
+            _fetchDefaultCard();
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid)),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_card, color: Colors.grey),
+              SizedBox(width: 10),
+              Text('Add Payment Method', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    String cardNumber = _selectedCard!['card_number'] ?? '';
+    String last4 = cardNumber.length >= 4 ? cardNumber.substring(cardNumber.length - 4) : '****';
+
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage())).then((_) {
+          _fetchDefaultCard();
+        });
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
-                Icon(Icons.credit_card, color: Colors.blue),
-                SizedBox(width: 15),
-                Text('Visa Card (.... 4242)', style: TextStyle(fontWeight: FontWeight.w500)),
+                const Icon(Icons.credit_card, color: Colors.blue),
+                const SizedBox(width: 15),
+                Text('Visa Card (.... $last4)', style: const TextStyle(fontWeight: FontWeight.w500)),
               ],
             ),
-            Icon(Icons.keyboard_arrow_right),
+            const Icon(Icons.keyboard_arrow_right),
           ],
         ),
       ),

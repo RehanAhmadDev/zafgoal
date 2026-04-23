@@ -96,8 +96,8 @@ class OrderDetailPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Total Amount:', style: TextStyle(color: Colors.grey)),
-              // Yahan bhi £ ka sign lagaya hai
-              Text('£$amount', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDark)),
+              // --- UPDATE: Yahan se izafi '£' hata diya hai ---
+              Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryDark)),
             ],
           ),
         ],
@@ -105,7 +105,6 @@ class OrderDetailPage extends StatelessWidget {
     );
   }
 
-  // --- UPDATE: Product ki picture aur sahi naam add kiya hai ---
   Widget _buildItemCard(dynamic item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -117,7 +116,7 @@ class OrderDetailPage extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Image.network(
-              item['image'] ?? 'https://via.placeholder.com/150', // Agar tasweer na ho toh yeh lagaye
+              item['image'] ?? 'https://via.placeholder.com/150',
               width: 50,
               height: 50,
               fit: BoxFit.cover,
@@ -133,8 +132,8 @@ class OrderDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Yahan 'name' ki jagah 'product_name' likha hai
-                Text(item['product_name'] ?? 'Product', style: const TextStyle(fontWeight: FontWeight.bold)),
+                // --- UPDATE: 'product_name' ki jagah 'name' kar diya taake sahi naam aaye ---
+                Text(item['name'] ?? 'Product', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 5),
                 Text('Price: ${item['price']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],

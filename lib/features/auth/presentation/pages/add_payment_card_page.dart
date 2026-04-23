@@ -1,10 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
-class AddPaymentCardPage extends StatelessWidget {
+class AddPaymentCardPage extends StatefulWidget {
   const AddPaymentCardPage({super.key});
+
+  @override
+  State<AddPaymentCardPage> createState() => _AddPaymentCardPageState();
+}
+
+class _AddPaymentCardPageState extends State<AddPaymentCardPage> {
+  bool _isLoading = false;
+
+  // Controllers
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _numberController = TextEditingController();
+  final TextEditingController _expiryController = TextEditingController();
+  final TextEditingController _cvvController = TextEditingController();
+
+  // Live Card par dikhane k liye variables
+  String _displayCardNumber = '**** **** **** 1234';
+  String _displayCardHolder = 'JOHN DOE';
+  String _displayExpiry = '12/28';
+
+  @override
+  void initState() {
+    super.initState();
+    // Live UI update karne k liye Listeners lagaye hain
+    _nameController.addListener(() {
+      setState(() {
+        _displayCardHolder = _nameController.text.isEmpty ? 'JOHN DOE' : _nameController.text.toUpperCase();
+      });
+    });
+
+    _numberController.addListener(() {
+      setState(() {
+        _displayCardNumber = _numberController.text.isEmpty ? '**** **** **** 1234' : _numberController.text;
+      });
+    });
+
+    _expiryController.addListener(() {
+      setState(() {
+        _displayExpiry = _expiryController.text.isEmpty ? '12/28' : _expiryController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _numberController.dispose();
+    _expiryController.dispose();
+    _cvvController.dispose();
+    super.dispose();
+  }
+
+  // --- Supabase may Card Save karne ka Logic ---
+  Future<void> _saveCard() async {
+    if (_nameController.text.trim().isEmpty ||
+        _numberController.text.trim().isEmpty ||
+        _expiryController.text.trim().isEmpty ||
+        _cvvController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all card details'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception('User not logged in');
+
+      // Database may insert karna
+      await Supabase.instance.client.from('payment_cards').insert({
+        'user_id': user.id,
+        'card_holder': _nameController.text.trim(),
+        'card_number': _numberController.text.trim(),
+        'expiry_date': _expiryController.text.trim(),
+        // Note: Real world may CVV save nahi karte
+      });
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Card Saved Successfully!'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context); // Wapas bhej do
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving card: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +122,7 @@ class AddPaymentCardPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Mock Virtual Card (Premium Feel)
+            // --- Live Virtual Card ---
             Container(
               height: 200,
               width: double.infinity,
@@ -48,11 +143,11 @@ class AddPaymentCardPage extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Icon(Icons.contactless, color: Colors.white, size: 30),
@@ -60,8 +155,8 @@ class AddPaymentCardPage extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    '**** **** **** 1234',
-                    style: TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 2),
+                    _displayCardNumber, // Live Variable
+                    style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 2),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -69,15 +164,15 @@ class AddPaymentCardPage extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Card Holder', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                          Text('JOHN DOE', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                          const Text('Card Holder', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                          Text(_displayCardHolder, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)), // Live Variable
                         ],
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Expires', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                          Text('12/28', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                          const Text('Expires', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                          Text(_displayExpiry, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)), // Live Variable
                         ],
                       ),
                     ],
@@ -86,7 +181,7 @@ class AddPaymentCardPage extends StatelessWidget {
               ),
             ),
 
-            // Form Area
+            // --- Form Area ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
               decoration: const BoxDecoration(
@@ -97,11 +192,17 @@ class AddPaymentCardPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLabel('Cardholder Name'),
-                  const CustomTextField(hintText: 'John Doe'),
+                  CustomTextField(
+                    controller: _nameController,
+                    hintText: 'John Doe',
+                  ),
 
                   const SizedBox(height: 16),
                   _buildLabel('Card Number'),
-                  const CustomTextField(hintText: '0000 0000 0000 0000'),
+                  CustomTextField(
+                    controller: _numberController,
+                    hintText: '0000 0000 0000 0000',
+                  ),
 
                   const SizedBox(height: 16),
                   Row(
@@ -111,7 +212,10 @@ class AddPaymentCardPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildLabel('Expiry Date'),
-                            const CustomTextField(hintText: 'MM/YY'),
+                            CustomTextField(
+                              controller: _expiryController,
+                              hintText: 'MM/YY',
+                            ),
                           ],
                         ),
                       ),
@@ -121,7 +225,11 @@ class AddPaymentCardPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildLabel('CVV'),
-                            const CustomTextField(hintText: '123', isPassword: true),
+                            CustomTextField(
+                              controller: _cvvController,
+                              hintText: '123',
+                              isPassword: true,
+                            ),
                           ],
                         ),
                       ),
@@ -129,12 +237,11 @@ class AddPaymentCardPage extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 40),
-                  PrimaryButton(
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
+                      : PrimaryButton(
                     text: 'Save Card',
-                    onPressed: () {
-                      // Yahan card save karne ka logic aayega
-                      Navigator.pop(context);
-                    },
+                    onPressed: _saveCard,
                   ),
                   const SizedBox(height: 30),
                 ],

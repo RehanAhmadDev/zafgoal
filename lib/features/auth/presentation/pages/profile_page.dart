@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'add_payment_card_page.dart';
 import 'my_orders_page.dart';
+import 'address_book_page.dart'; // NAYA IMPORT: Address Book k liye
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,9 +17,9 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String _fullName = 'Loading...';
   String _email = 'Loading...';
-  String? _avatarUrl; // Tasweer k URL k liye naya variable
+  String? _avatarUrl;
   bool _isLoading = true;
-  bool _isUploading = false; // Uploading k dauran ghoomne wala chakra dikhane k liye
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -26,7 +27,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _fetchUserProfile();
   }
 
-  // --- Supabase se User Data aur Picture Uthana ---
   Future<void> _fetchUserProfile() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -43,7 +43,7 @@ class _ProfilePageState extends State<ProfilePage> {
           setState(() {
             _email = email;
             _fullName = data['full_name'] ?? 'User';
-            _avatarUrl = data['avatar_url']; // Tasweer ka URL database se liya
+            _avatarUrl = data['avatar_url'];
             _isLoading = false;
           });
         }
@@ -62,20 +62,18 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // --- NAYA LOGIC: Gallery se image select aur Supabase pe Upload (With Cache Busting & Compression) ---
   Future<void> _uploadProfilePicture() async {
     try {
       final picker = ImagePicker();
 
-      // Yahan humne Compression (Size chota karne ka) logic lagaya hai
       final imageFile = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 50, // Tasweer ki quality 50% kar dega taake app crash na ho
-        maxWidth: 800,    // Chaurai 800 pixels se zyada nahi hogi
-        maxHeight: 800,   // Lambai 800 pixels se zyada nahi hogi
+        imageQuality: 50,
+        maxWidth: 800,
+        maxHeight: 800,
       );
 
-      if (imageFile == null) return; // User ne cancel kar diya
+      if (imageFile == null) return;
 
       setState(() => _isUploading = true);
 
@@ -84,26 +82,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (user == null) throw Exception('User not logged in');
 
-      // File ka naam user ki ID k hisab se set karna taake replace karna asan ho
       final fileExtension = imageFile.path.split('.').last;
       final fileName = '${user.id}.$fileExtension';
 
-      // 1. Storage bucket 'avatars' may upload karna
       await Supabase.instance.client.storage
-          .from('avatars') // Bucket ka naam 'avatars' hona zaroori hai
+          .from('avatars')
           .upload(fileName, file, fileOptions: const FileOptions(upsert: true));
 
-      // 2. Upload hone k baad uska public link hasil karna
       final String publicUrl = Supabase.instance.client.storage
           .from('avatars')
           .getPublicUrl(fileName);
 
-      // --- ASALI JADOO YAHAN HAI (Cache Busting) ---
-      // Waqt (timestamp) dalne se Flutter fauran nayi tasweer load karega
       final String timeStamp = DateTime.now().millisecondsSinceEpoch.toString();
       final String updatedUrl = '$publicUrl?t=$timeStamp';
 
-      // 3. Database k 'profiles' table may naya link save karna
       await Supabase.instance.client
           .from('profiles')
           .update({'avatar_url': updatedUrl})
@@ -111,7 +103,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (mounted) {
         setState(() {
-          _avatarUrl = updatedUrl; // Screen par foran nayi tasweer dikhane k liye
+          _avatarUrl = updatedUrl;
           _isUploading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,7 +121,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // --- Logout Karna ---
   Future<void> _signOut() async {
     try {
       await Supabase.instance.client.auth.signOut();
@@ -181,7 +172,6 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       children: [
         GestureDetector(
-          // Tasweer par click hone pe gallery khulegi
           onTap: _isUploading ? null : _uploadProfilePicture,
           child: Stack(
             alignment: Alignment.bottomRight,
@@ -194,14 +184,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     ? const Icon(Icons.person, size: 50, color: Colors.white)
                     : null,
               ),
-              // Agar tasweer upload ho rahi hai toh loader dikhao
               if (_isUploading)
                 const Positioned.fill(
                   child: Center(
                     child: CircularProgressIndicator(color: Color(0xFF233933)),
                   ),
                 ),
-              // Camera wala chota icon
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
@@ -236,10 +224,18 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Column(
         children: [
-          _buildSettingsTile(Icons.person_outline, 'My Account'),
-          _buildSettingsTile(Icons.notifications_none_outlined, 'Notifications',
+          _buildSettingsTile(
+              Icons.person_outline,
+              'My Account',
               onTap: () {
-                // Notification page navigation
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('My Account details coming soon!')));
+              }
+          ),
+          _buildSettingsTile(
+              Icons.notifications_none_outlined,
+              'Notifications',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifications page coming soon!')));
               }
           ),
           _buildSettingsTile(
@@ -252,7 +248,17 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
           ),
-          _buildSettingsTile(Icons.location_on_outlined, 'Address Book'),
+          // --- UPDATE: Address Book ko connect kar diya ---
+          _buildSettingsTile(
+              Icons.location_on_outlined,
+              'Address Book',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AddressBookPage()),
+                );
+              }
+          ),
           _buildSettingsTile(
               Icons.payment_outlined,
               'Payment Methods',
@@ -263,7 +269,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
           ),
-          _buildSettingsTile(Icons.security_outlined, 'Privacy Policy'),
+          _buildSettingsTile(
+              Icons.security_outlined,
+              'Privacy Policy',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Privacy Policy coming soon!')));
+              }
+          ),
         ],
       ),
     );
