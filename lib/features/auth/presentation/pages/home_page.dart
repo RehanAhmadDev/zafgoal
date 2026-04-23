@@ -471,24 +471,96 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// --- PROFESSIONAL UPDATE: Dynamic Supabase Banner Slider ---
 class HomeBannerSlider extends StatefulWidget {
   const HomeBannerSlider({super.key});
-  @override State<HomeBannerSlider> createState() => _HomeBannerSliderState();
+
+  @override
+  State<HomeBannerSlider> createState() => _HomeBannerSliderState();
 }
+
 class _HomeBannerSliderState extends State<HomeBannerSlider> {
   int _currentPage = 0;
-  final List<String> _bannerImages = [
-    'https://images.pexels.com/photos/1359326/pexels-photo-1359326.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=600',
-    'https://images.pexels.com/photos/1132047/pexels-photo-1132047.jpeg?auto=compress&cs=tinysrgb&w=600',
-  ];
-  @override Widget build(BuildContext context) {
+  List<String> _bannerImages = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBanners();
+  }
+
+  Future<void> _fetchBanners() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('banners')
+          .select('image_url')
+          .order('created_at', ascending: false);
+
+      if (mounted) {
+        setState(() {
+          _bannerImages = List<String>.from(response.map((item) => item['image_url']));
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching banners: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator(color: Color(0xFF233933))));
+    }
+
+    if (_bannerImages.isEmpty) {
+      return const SizedBox.shrink(); // Agar banners na hon toh space hide kar dega
+    }
+
     return Container(
-      height: 180, width: double.infinity, margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      height: 180,
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Stack(
         children: [
-          ClipRRect(borderRadius: BorderRadius.circular(25), child: PageView.builder(onPageChanged: (index) => setState(() => _currentPage = index), itemCount: _bannerImages.length, itemBuilder: (context, index) => Image.network(_bannerImages[index], fit: BoxFit.cover, width: double.infinity))),
-          Positioned(bottom: 15, left: 0, right: 0, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(_bannerImages.length, (index) => AnimatedContainer(duration: const Duration(milliseconds: 300), margin: const EdgeInsets.symmetric(horizontal: 4), height: 8, width: _currentPage == index ? 24 : 8, decoration: BoxDecoration(color: _currentPage == index ? Colors.white : Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(8)))))),
+          ClipRRect(
+              borderRadius: BorderRadius.circular(25),
+              child: PageView.builder(
+                  onPageChanged: (index) => setState(() => _currentPage = index),
+                  itemCount: _bannerImages.length,
+                  itemBuilder: (context, index) => Image.network(
+                    _bannerImages[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
+                  )
+              )
+          ),
+          Positioned(
+              bottom: 15,
+              left: 0,
+              right: 0,
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                      _bannerImages.length,
+                          (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          height: 8,
+                          width: _currentPage == index ? 24 : 8,
+                          decoration: BoxDecoration(
+                              color: _currentPage == index ? Colors.white : Colors.white.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(8)
+                          )
+                      )
+                  )
+              )
+          ),
         ],
       ),
     );
