@@ -6,6 +6,7 @@ import 'package:zafgoal/features/auth/presentation/pages/search_results_page.dar
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/providers/favorite_provider.dart';
+import 'package:zafgoal/providers/notification_provider.dart';
 
 import 'cart_page.dart';
 import 'notifications_page.dart';
@@ -39,7 +40,7 @@ class _HomePageState extends State<HomePage> {
     _fetchHomeData();
   }
 
-  // --- UPDATE: Real-time Testing Function with Success Alert ---
+  // --- Test Notification: Nayi row hamesha is_read: false k sath jayegi ---
   Future<void> sendTestNotification() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -52,15 +53,14 @@ class _HomePageState extends State<HomePage> {
     }
 
     try {
-      // Database mein row insert karna
       await Supabase.instance.client.from('notifications').insert({
         'user_id': user.id,
         'title': 'Order Placed! 🛍️',
         'subtitle': 'Aap ka naya order confirm ho gaya hai.',
         'details': 'Order ID: #ZG-${DateTime.now().millisecond} • Status: Pending',
+        'is_read': false,
       });
 
-      // Kamyabi ka message dikhana
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -184,7 +184,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(context),
-      // --- UPDATE: Floating Button ab asli Notification bhejega ---
       floatingActionButton: FloatingActionButton(
         onPressed: () => sendTestNotification(),
         backgroundColor: const Color(0xFF233933),
@@ -225,8 +224,19 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const Spacer(),
+          // --- BELL ICON: Is-read mark karne k liye await zaroori hai ---
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
+            onTap: () async {
+              // Pehle database mein sab read mark karo
+              await context.read<NotificationProvider>().markAsRead();
+
+              if (mounted) {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationsPage())
+                );
+              }
+            },
             child: _buildNotificationIcon(),
           ),
         ],
@@ -393,7 +403,39 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSectionHeader(String title) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)));
-  Widget _buildNotificationIcon() => Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.notifications_none_outlined));
+
+  // --- BADGE UI: Ab asli unread count dikhayega ---
+  Widget _buildNotificationIcon() {
+    return Consumer<NotificationProvider>(
+      builder: (context, notiProvider, child) {
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.notifications_none_outlined, color: Colors.black)
+            ),
+            if (notiProvider.unreadCount > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    '${notiProvider.unreadCount}',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 
   Widget _buildBottomNav(BuildContext context) {
     return Container(
