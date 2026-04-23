@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:zafgoal/providers/favorite_provider.dart';
-import 'package:zafgoal/providers/cart_provider.dart';
-import 'package:zafgoal/core/theme/app_colors.dart';
-import 'product_detail_page.dart'; // Apna sahi path check kar lein
+import '../../../../providers/cart_provider.dart';
+import '../../../../providers/favorite_provider.dart';
+
+import 'product_detail_page.dart';
 
 class FavoritesPage extends StatelessWidget {
   const FavoritesPage({super.key});
@@ -11,18 +11,17 @@ class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('My Favorites', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        title: const Text('My Favorites', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      // --- Consumer lagaya taake jaise hi koi cheez pasand/napasand ho, page update ho jaye ---
       body: Consumer<FavoriteProvider>(
         builder: (context, favProvider, child) {
           if (favProvider.favorites.isEmpty) {
@@ -64,22 +63,26 @@ class FavoritesPage extends StatelessWidget {
   }
 
   Widget _buildFavCard(BuildContext context, Map<String, dynamic> product, FavoriteProvider favProvider) {
+    final String pName = product['name']?.toString() ?? 'Product';
+    final String pPrice = product['price']?.toString() ?? '£0.0';
+    final String pImg = product['img']?.toString() ?? 'https://via.placeholder.com/150';
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ProductDetailPage(
-              title: product['name'] ?? 'Product',
-              price: product['price'] ?? '£0.0',
-              imageUrl: product['img'] ?? 'https://via.placeholder.com/150',
+              title: pName,
+              price: pPrice,
+              imageUrl: pImg,
             ),
           ),
         );
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
         ),
@@ -92,7 +95,7 @@ class FavoritesPage extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     child: Image.network(
-                      product['img'] ?? 'https://via.placeholder.com/150',
+                      pImg,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, color: Colors.grey),
@@ -104,27 +107,25 @@ class FavoritesPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(product['price'] ?? '', style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
-
-                          // --- Direct Add to Cart ---
+                          Text(pPrice, style: const TextStyle(color: Color(0xFF233933), fontWeight: FontWeight.bold)),
                           GestureDetector(
                             onTap: () {
                               context.read<CartProvider>().addToCart(
-                                product['name'], product['name'], product['price'], product['img'] ?? '', 1,
+                                pName, pName, pPrice, pImg, 1,
                               );
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${product['name']} added to cart!'), backgroundColor: AppColors.primaryDark, duration: const Duration(seconds: 1)),
+                                SnackBar(content: Text('$pName added to cart!'), backgroundColor: const Color(0xFF233933), duration: const Duration(seconds: 1)),
                               );
                             },
                             child: Container(
                               padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
-                              child: const Icon(Icons.add, size: 20, color: AppColors.primaryDark),
+                              decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(8)),
+                              child: const Icon(Icons.add, size: 20, color: Color(0xFF233933)),
                             ),
                           ),
                         ],
@@ -134,8 +135,6 @@ class FavoritesPage extends StatelessWidget {
                 ),
               ],
             ),
-
-            // --- Remove from Favorites Button ---
             Positioned(
               top: 8,
               right: 8,

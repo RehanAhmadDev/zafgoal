@@ -24,7 +24,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String _userName = 'Loading...';
-  String? _avatarUrl; // --- NAYA VARIABLE: Tasweer k URL k liye ---
+  String? _avatarUrl;
 
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _freshFruits = [];
@@ -39,21 +39,20 @@ class _HomePageState extends State<HomePage> {
     _fetchHomeData();
   }
 
-  // --- UPDATE: Naam k sath ab avatar_url bhi mangwa rahay hain ---
   Future<void> _fetchUserData() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         final data = await Supabase.instance.client
             .from('profiles')
-            .select() // select() khali chorne se sara data aa jata hai
+            .select()
             .eq('id', user.id)
             .single();
 
         if (mounted) {
           setState(() {
-            _userName = data['full_name'] ?? 'User';
-            _avatarUrl = data['avatar_url']; // Tasweer database se set ki
+            _userName = data['full_name']?.toString() ?? 'User';
+            _avatarUrl = data['avatar_url']?.toString();
           });
         }
       }
@@ -72,8 +71,12 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _categories = List<Map<String, dynamic>>.from(categoriesData);
-          _freshFruits = productsData.where((p) => p['category'] == 'Fresh Fruits').cast<Map<String, dynamic>>().toList();
-          _dailyDairy = productsData.where((p) => p['category'] == 'Daily Dairy').cast<Map<String, dynamic>>().toList();
+
+          final allProducts = List<Map<String, dynamic>>.from(productsData);
+
+          _freshFruits = allProducts.where((p) => p['category'] == 'Fresh Fruits').toList();
+          _dailyDairy = allProducts.where((p) => p['category'] == 'Daily Dairy').toList();
+
           _isLoadingCategories = false;
           _isLoadingProducts = false;
         });
@@ -157,14 +160,13 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
-          // --- UPDATE: Yahan Live Tasweer aur Auto-Refresh (.then) laga diya hai ---
           GestureDetector(
             onTap: () {
               Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ProfilePage())
               ).then((_) {
-                _fetchUserData(); // Wapas aane par nayi tasweer layega
+                _fetchUserData();
               });
             },
             child: CircleAvatar(
@@ -208,14 +210,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProductCard(BuildContext context, Map<String, dynamic> product) {
+    final String pName = product['name']?.toString() ?? 'Product';
+    final String pPrice = product['price']?.toString() ?? '£0.0';
+    final String pImg = product['img']?.toString() ?? 'https://via.placeholder.com/150';
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ProductDetailPage(
-            title: product['name'] ?? 'Product',
-            price: product['price'] ?? '£0.0',
-            imageUrl: product['img'] ?? 'https://via.placeholder.com/150',
+            title: pName,
+            price: pPrice,
+            imageUrl: pImg,
           ),
         ),
       ),
@@ -230,7 +236,7 @@ class _HomePageState extends State<HomePage> {
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     child: Image.network(
-                      product['img'] ?? 'https://via.placeholder.com/150',
+                      pImg,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, size: 40, color: Colors.grey),
@@ -242,17 +248,17 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(product['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(pName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(product['price'] ?? '', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                          Text(pPrice, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
 
                           GestureDetector(
                             onTap: () {
                               context.read<CartProvider>().addToCart(
-                                product['name'], product['name'], product['price'], product['img'] ?? '', 1,
+                                pName, pName, pPrice, pImg, 1,
                               );
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to cart!'), duration: Duration(seconds: 1)));
                             },
@@ -271,10 +277,16 @@ class _HomePageState extends State<HomePage> {
               right: 8,
               child: Consumer<FavoriteProvider>(
                 builder: (context, favProvider, child) {
-                  bool isFav = favProvider.isFavorite(product['name']);
+                  bool isFav = favProvider.isFavorite(pName);
                   return GestureDetector(
                     onTap: () {
-                      favProvider.toggleFavorite(product);
+                      // Map strictly ensure kiya hai
+                      Map<String, dynamic> prodMap = {
+                        'name': pName,
+                        'price': pPrice,
+                        'img': pImg
+                      };
+                      favProvider.toggleFavorite(prodMap);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(6),
@@ -316,7 +328,7 @@ class _HomePageState extends State<HomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CategoryProductsPage(categoryName: cat['name'] ?? ''),
+                    builder: (context) => CategoryProductsPage(categoryName: cat['name']?.toString() ?? ''),
                   ),
                 );
               },
@@ -327,11 +339,11 @@ class _HomePageState extends State<HomePage> {
                       backgroundColor: Colors.white,
                       child: Padding(
                           padding: const EdgeInsets.all(12.0),
-                          child: Image.network(cat['img'] ?? '', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey))
+                          child: Image.network(cat['img']?.toString() ?? '', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.category, color: Colors.grey))
                       )
                   ),
                   const SizedBox(height: 5),
-                  Text(cat['name'] ?? '', style: const TextStyle(fontSize: 12)),
+                  Text(cat['name']?.toString() ?? '', style: const TextStyle(fontSize: 12)),
                 ],
               ),
             ),
@@ -345,32 +357,35 @@ class _HomePageState extends State<HomePage> {
   Widget _buildNotificationIcon() => Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.notifications_none_outlined));
 
   Widget _buildBottomNav(BuildContext context) {
-    return BottomAppBar(
-      height: 70, color: Colors.white, shape: const CircularNotchedRectangle(), notchMargin: 8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () {}),
-          const SizedBox(width: 40),
-          IconButton(
-            icon: const Icon(Icons.favorite_border, color: Colors.grey),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage())),
-          ),
-          IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage()))),
-          // --- UPDATE: Bottom bar k Profile icon par bhi .then() laga diya hai ---
-          IconButton(
-              icon: const Icon(Icons.person_outline, color: Colors.grey),
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage())
-                ).then((_) {
-                  _fetchUserData(); // Wapas aane par refresh
-                });
-              }
-          ),
-        ],
+    // Height error se bachne k liye container may wrap kiya
+    return Container(
+      color: Colors.white,
+      child: BottomAppBar(
+        height: 70, color: Colors.white, shape: const CircularNotchedRectangle(), notchMargin: 8,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () {}),
+            const SizedBox(width: 40),
+            IconButton(
+              icon: const Icon(Icons.favorite_border, color: Colors.grey),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage())),
+            ),
+            IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage()))),
+            IconButton(
+                icon: const Icon(Icons.person_outline, color: Colors.grey),
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProfilePage())
+                  ).then((_) {
+                    _fetchUserData();
+                  });
+                }
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,54 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class FavoriteProvider with ChangeNotifier {
-  // Pasandeeda products ki list
+class FavoriteProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _favorites = [];
+  bool _isLoading = false;
 
   List<Map<String, dynamic>> get favorites => _favorites;
+  bool get isLoading => _isLoading;
 
   FavoriteProvider() {
-    _loadFavorites();
+    fetchFavorites();
   }
 
-  // --- Data ko Phone mein Save karna ---
-  Future<void> _saveFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Maps ko text (JSON) mein badal kar save karna
-    List<String> favStrings = _favorites.map((item) => json.encode(item)).toList();
-    prefs.setStringList('favorites_data', favStrings);
+  Future<void> fetchFavorites() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final response = await Supabase.instance.client
+            .from('favorites')
+            .select()
+            .eq('user_id', user.id);
+
+        _favorites = List<Map<String, dynamic>>.from(response.map((item) => {
+          'db_id': item['id'],
+          'name': item['product_name'],
+          'price': item['price'],
+          'img': item['image_url'],
+        }));
+      }
+    } catch (e) {
+      debugPrint('Error fetching favorites: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
-  // --- Data ko Phone se Wapas lana ---
-  Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String>? favStrings = prefs.getStringList('favorites_data');
-    if (favStrings != null) {
-      _favorites = favStrings.map((itemStr) => json.decode(itemStr) as Map<String, dynamic>).toList();
+  Future<void> toggleFavorite(Map<String, dynamic> product) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    final existingIndex = _favorites.indexWhere((item) => item['name'] == product['name']);
+
+    if (existingIndex >= 0) {
+      final dbId = _favorites[existingIndex]['db_id'];
+      _favorites.removeAt(existingIndex);
       notifyListeners();
+
+      try {
+        await Supabase.instance.client.from('favorites').delete().eq('id', dbId);
+      } catch (e) {
+        debugPrint('Error removing favorite: $e');
+        fetchFavorites();
+      }
+    } else {
+      _favorites.add(product);
+      notifyListeners();
+
+      try {
+        await Supabase.instance.client.from('favorites').insert({
+          'user_id': user.id,
+          'product_name': product['name'],
+          'price': product['price'],
+          'image_url': product['img'],
+        });
+        await fetchFavorites();
+      } catch (e) {
+        debugPrint('Error adding favorite: $e');
+        _favorites.removeLast();
+        notifyListeners();
+      }
     }
   }
 
-  // Check karna ke kya yeh product pehle se pasand hai? (Dil laal karna hai ya nahi)
   bool isFavorite(String productName) {
     return _favorites.any((item) => item['name'] == productName);
-  }
-
-  // Dil dabane par add ya remove karna
-  void toggleFavorite(Map<String, dynamic> product) {
-    String productName = product['name'];
-    int index = _favorites.indexWhere((item) => item['name'] == productName);
-
-    if (index >= 0) {
-      // Agar pehle se hai, toh nikal do (Dil khali)
-      _favorites.removeAt(index);
-    } else {
-      // Agar nahi hai, toh add kar do (Dil laal)
-      _favorites.add(product);
-    }
-
-    _saveFavorites(); // Fauran save karo
-    notifyListeners(); // UI ko update karo
   }
 }
