@@ -2,10 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:zafgoal/providers/notification_provider.dart';
+import 'notifications_page.dart';
+import 'privacy_policy_page.dart'; // NAYA IMPORT
 
 import 'add_payment_card_page.dart';
 import 'my_orders_page.dart';
-import 'address_book_page.dart'; // NAYA IMPORT: Address Book k liye
+import 'address_book_page.dart';
+import 'my_account_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -227,17 +232,36 @@ class _ProfilePageState extends State<ProfilePage> {
           _buildSettingsTile(
               Icons.person_outline,
               'My Account',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('My Account details coming soon!')));
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MyAccountPage(currentName: _fullName)),
+                );
+                if (result == true) {
+                  _fetchUserProfile();
+                }
               }
           ),
-          _buildSettingsTile(
-              Icons.notifications_none_outlined,
-              'Notifications',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifications page coming soon!')));
-              }
+
+          Consumer<NotificationProvider>(
+            builder: (context, notiProvider, child) {
+              return _buildSettingsTile(
+                Icons.notifications_none_outlined,
+                'Notifications',
+                badgeCount: notiProvider.unreadCount > 0 ? notiProvider.unreadCount : null,
+                onTap: () async {
+                  await notiProvider.markAsRead();
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationsPage()),
+                    );
+                  }
+                },
+              );
+            },
           ),
+
           _buildSettingsTile(
               Icons.shopping_bag_outlined,
               'My Orders',
@@ -248,7 +272,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
           ),
-          // --- UPDATE: Address Book ko connect kar diya ---
           _buildSettingsTile(
               Icons.location_on_outlined,
               'Address Book',
@@ -269,11 +292,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
           ),
+
+          // --- UPDATE: Privacy Policy Connect ho gayi hai ---
           _buildSettingsTile(
               Icons.security_outlined,
               'Privacy Policy',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Privacy Policy coming soon!')));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
+                );
               }
           ),
         ],
@@ -281,7 +309,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title, {VoidCallback? onTap}) {
+  Widget _buildSettingsTile(IconData icon, String title, {int? badgeCount, VoidCallback? onTap}) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -291,7 +319,19 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         child: Icon(icon, color: const Color(0xFF233933), size: 20),
       ),
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      title: Row(
+        children: [
+          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          if (badgeCount != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              child: Text('$badgeCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ],
+      ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
       onTap: onTap,
     );
