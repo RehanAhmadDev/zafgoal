@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // NAYA IMPORT: Input Formatters k liye
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
+import 'admin_dashboard.dart';
 import 'home_page.dart';
 import 'sign_in_page.dart';
+// --- NAYA IMPORT: Admin Dashboard ke liye ---
+
 
 class SignUpFormPage extends StatefulWidget {
   final String accountType;
@@ -63,7 +66,6 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
       return;
     }
 
-    // Phone number ki choti si validation (optional magar achi hoti hai)
     if (_phoneController.text.isNotEmpty && _phoneController.text.length < 11) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid 11-digit phone number')),
@@ -86,6 +88,7 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
       final User? user = res.user;
 
       if (user != null) {
+        // User ki profile database may add kar rahay hain
         await supabase.from('profiles').insert({
           'id': user.id,
           'full_name': _nameController.text.trim(),
@@ -96,11 +99,20 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
         });
 
         if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
-                (route) => false,
-          );
+          // --- NAYA LOGIC: Role k hisab se Navigation ---
+          if (widget.accountType == 'Admin') {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminDashboard()),
+                  (route) => false,
+            );
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const HomePage()),
+                  (route) => false,
+            );
+          }
         }
       }
     } on AuthException catch (e) {
@@ -167,14 +179,13 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
                     CustomTextField(hintText: 'example@gmail.com', controller: _emailController),
                     const SizedBox(height: 16),
 
-                    // --- UPDATE: Phone Number Restrictions ---
                     _buildLabel('Phone Number'),
                     TextField(
                       controller: _phoneController,
-                      keyboardType: TextInputType.phone, // Keyboard main sirf numbers ayenge
+                      keyboardType: TextInputType.phone,
                       inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly, // ABC likhna block ho jayega
-                        LengthLimitingTextInputFormatter(11), // Sirf 11 numbers allow honge
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
                       ],
                       decoration: InputDecoration(
                         filled: true,
@@ -183,7 +194,7 @@ class _SignUpFormPageState extends State<SignUpFormPage> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                         hintText: '03XX XXXXXXX',
                         hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                        counterText: "", // Niche length counter (0/11) ko hide karne k liye
+                        counterText: "",
                       ),
                     ),
                     const SizedBox(height: 16),

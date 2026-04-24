@@ -5,9 +5,12 @@ import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
+import 'admin_dashboard.dart';
 import 'forgot_password_page.dart';
 import 'choose_account_page.dart';
 import 'home_page.dart';
+// --- NAYA IMPORT: Admin Dashboard ke liye ---
+
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -23,7 +26,7 @@ class _SignInPageState extends State<SignInPage> {
 
   bool _isLoading = false;
 
-  // 2. Supabase Sign In Logic
+  // 2. Supabase Sign In Logic with Role Checking
   Future<void> _signInWithSupabase() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,24 +43,50 @@ class _SignInPageState extends State<SignInPage> {
       final supabase = Supabase.instance.client;
 
       // Supabase se verify karwa rahe hain
-      await supabase.auth.signInWithPassword(
+      final AuthResponse res = await supabase.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Kamyabi k baad Home Page par le jao
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-              (route) => false,
-        );
+      final user = res.user;
+
+      if (user != null) {
+        // --- NAYA LOGIC: Database se role check karo ---
+        final data = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (mounted) {
+          final role = data?['role'] ?? 'Staff';
+
+          if (role == 'Admin') {
+            // Agar Admin hai toh Admin Dashboard par le jao
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const AdminDashboard()),
+                  (route) => false,
+            );
+          } else {
+            // Warna aam Customer wale Home Page par le jao
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const HomePage()),
+                  (route) => false,
+            );
+          }
+        }
       }
     } on AuthException catch (e) {
       // Supabase ka error (jaise galat password)
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login Failed: ${e.message}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login Failed: ${e.message}')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
       if (mounted) {
         setState(() {

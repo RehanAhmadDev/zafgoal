@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 
-// Agar HomePage ka path thora mukhtalif ho toh auto-import se adjust kar lijiye ga
+// Import for HomePage
+import 'admin_dashboard.dart';
 import 'home_page.dart';
+// --- NAYA IMPORT: Admin Dashboard ke liye ---
+// Agar path thora mukhtalif ho toh isay adjust kar lijiye ga
+
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -20,7 +24,7 @@ class _SplashPageState extends State<SplashPage> {
     _checkAuthSession();
   }
 
-  // Session check karne wala Asal Logic
+  // --- UPDATED LOGIC: Role based routing ---
   Future<void> _checkAuthSession() async {
     // 2.5 seconds ka delay taake user ko splash design nazar aaye
     await Future.delayed(const Duration(milliseconds: 2500));
@@ -31,11 +35,42 @@ class _SplashPageState extends State<SplashPage> {
     final session = Supabase.instance.client.auth.currentSession;
 
     if (session != null) {
-      // Agar user pehle se login hai -> Direct Home Page
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+      try {
+        // Database se check karein ke is user ka role kya hai
+        final data = await Supabase.instance.client
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+        if (!mounted) return;
+
+        // Agar role null hai toh default 'Staff' (Customer) samjhein
+        final role = data?['role'] ?? 'Staff';
+
+        if (role == 'Admin') {
+          // Agar Admin hai toh Admin Dashboard par le jao
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminDashboard()),
+          );
+        } else {
+          // Warna aam Customer wale Home Page par le jao
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        }
+      } catch (e) {
+        debugPrint('Error checking role: $e');
+        // Agar koi error aaye toh safe side par aam Home Page dikha do
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        }
+      }
     } else {
       // Agar login nahi hai -> Sign In Page
       Navigator.pushReplacement(
@@ -133,11 +168,11 @@ class _SplashPageState extends State<SplashPage> {
 
                 const SizedBox(height: 60),
 
-                // Auto-loading Indicator (Next button ki jagah)
+                // Auto-loading Indicator
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 20),
                   child: SizedBox(
-                    height: 60, // Puranay button ki height match karne k liye
+                    height: 60,
                     child: Center(
                       child: CircularProgressIndicator(
                         color: Color(0xFF1B2E28),

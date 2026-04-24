@@ -5,12 +5,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:zafgoal/providers/notification_provider.dart';
 import 'notifications_page.dart';
-import 'privacy_policy_page.dart'; // NAYA IMPORT
+import 'privacy_policy_page.dart';
 
 import 'add_payment_card_page.dart';
 import 'my_orders_page.dart';
 import 'address_book_page.dart';
 import 'my_account_page.dart';
+
+// --- NAYA IMPORT: Logout k baad SignIn par bhejne k liye ---
+// Agar path ka koi issue ho to isay apne hisab se adjust kar lijiye ga
+import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -126,11 +130,17 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // --- UPDATE: Naya Logout Logic ---
   Future<void> _signOut() async {
     try {
       await Supabase.instance.client.auth.signOut();
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Saari purani history mita kar seedha SignIn page par bhejna
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const SignInPage()),
+              (route) => false,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -293,7 +303,6 @@ class _ProfilePageState extends State<ProfilePage> {
               }
           ),
 
-          // --- UPDATE: Privacy Policy Connect ho gayi hai ---
           _buildSettingsTile(
               Icons.security_outlined,
               'Privacy Policy',
