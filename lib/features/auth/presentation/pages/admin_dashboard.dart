@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 
-// Import for SignInPage to handle logout routing
+// --- IMPORTS ---
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
+import 'manage_products_page.dart'; // NAYA IMPORT: Agar path mukhtalif ho to adjust kar lein
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -14,7 +15,7 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
 
-  // --- NAYA LOGIC: Admin Logout ---
+  // --- Admin Logout Logic ---
   Future<void> _signOut() async {
     await Supabase.instance.client.auth.signOut();
     if (mounted) {
@@ -69,29 +70,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
                 children: [
+                  // 1. Manage Products Card (Ab active hai)
                   _buildDashboardCard(
-                    context,
-                    'Manage Products',
-                    Icons.inventory_2_outlined,
-                    Colors.blue,
+                      context,
+                      'Manage Products',
+                      Icons.inventory_2_outlined,
+                      Colors.blue,
+                          () {
+                        // NAYA LOGIC: Navigation to Manage Products Page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ManageProductsPage()),
+                        );
+                      }
                   ),
+
+                  // 2. Manage Orders Card
                   _buildDashboardCard(
-                    context,
-                    'Manage Orders',
-                    Icons.shopping_bag_outlined,
-                    Colors.orange,
+                      context,
+                      'Manage Orders',
+                      Icons.shopping_bag_outlined,
+                      Colors.orange,
+                          () {
+                        _showComingSoonMessage('Manage Orders');
+                      }
                   ),
+
+                  // 3. Manage Banners Card
                   _buildDashboardCard(
-                    context,
-                    'Manage Banners',
-                    Icons.view_carousel_outlined,
-                    Colors.purple,
+                      context,
+                      'Manage Banners',
+                      Icons.view_carousel_outlined,
+                      Colors.purple,
+                          () {
+                        _showComingSoonMessage('Manage Banners');
+                      }
                   ),
+
+                  // 4. Customers Card
                   _buildDashboardCard(
-                    context,
-                    'Customers',
-                    Icons.people_outline,
-                    Colors.green,
+                      context,
+                      'Customers',
+                      Icons.people_outline,
+                      Colors.green,
+                          () {
+                        _showComingSoonMessage('Customers');
+                      }
                   ),
                 ],
               ),
@@ -102,19 +126,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // --- UI Widget: Dashboard Card ---
-  Widget _buildDashboardCard(BuildContext context, String title, IconData icon, Color color) {
+  // Chota sa helper function messages k liye
+  void _showComingSoonMessage(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$title section coming soon!'),
+          backgroundColor: AppColors.primaryDark,
+          duration: const Duration(seconds: 1),
+        )
+    );
+  }
+
+  // --- UI Widget: Dashboard Card (Updated with onTap parameter) ---
+  Widget _buildDashboardCard(BuildContext context, String title, IconData icon, Color color, VoidCallback onTap) {
     return GestureDetector(
-      onTap: () {
-        // Abhi sirf Snackbar dikhayega, baad may yahan se navigation hogi
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$title section coming soon!'),
-              backgroundColor: AppColors.primaryDark,
-              duration: const Duration(seconds: 1),
-            )
-        );
-      },
+      onTap: onTap, // Har card ka apna custom action
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
