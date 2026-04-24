@@ -8,6 +8,7 @@ import 'add_address_page.dart';
 import 'add_payment_card_page.dart';
 import 'address_book_page.dart';
 import 'order_detail_page.dart';
+import 'payment_methods_page.dart'; // NAYA IMPORT
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -101,14 +102,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('Please login to place order');
 
-      // Profile details fetch karna Admin Panel k liye
       final profileData = await Supabase.instance.client
           .from('profiles')
           .select()
           .eq('id', user.id)
           .single();
 
-      // Items list map karna aap k CartItem model k 'image' variable k sath
       final itemsList = cart.items.map((item) => {
         'id': item.id,
         'name': item.name,
@@ -117,7 +116,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         'image': item.image ?? '',
       }).toList();
 
-      // Final Insert Query (Matching SQL columns)
       final response = await Supabase.instance.client.from('orders').insert({
         'user_id': user.id,
         'customer_name': profileData['full_name'] ?? 'User',
@@ -214,8 +212,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             _buildAddressSection(),
             _buildSectionHeader('Delivery Method'),
             _buildDeliveryMethod(),
-            _buildSectionHeader('Payment Method'),
-            _buildPaymentMethod(context),
+            _buildPaymentSection(),
             const SizedBox(height: 30),
             _buildBottomSummary(context, cart),
           ],
@@ -237,8 +234,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 padding: const EdgeInsets.only(right: 20),
                 child: TextButton(
                   onPressed: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressBookPage()));
-                    _fetchDefaultAddress();
+                    // ADDRESS CHANGE LOGIC
+                    final selected = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressBookPage()));
+                    if (selected != null && selected is Map<String, dynamic>) {
+                      setState(() => _selectedAddress = selected);
+                    } else {
+                      _fetchDefaultAddress();
+                    }
                   },
                   child: const Text('Change', style: TextStyle(color: Color(0xFF233933))),
                 ),
@@ -246,6 +248,45 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ],
         ),
         _buildAddressCard(context),
+      ],
+    );
+  }
+
+  // --- BUG FIX: Selection Logic Added ---
+  Widget _buildPaymentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Payment Method'),
+            if (_selectedCard != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: TextButton(
+                  onPressed: () async {
+                    // CARD SELECTION LOGIC
+                    final selected = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PaymentMethodsPage())
+                    );
+
+                    // Agar user ne koi card select kiya hai to usay UI par dikhao
+                    if (selected != null && selected is Map<String, dynamic>) {
+                      setState(() {
+                        _selectedCard = selected;
+                      });
+                    } else {
+                      _fetchDefaultCard(); // Warna purana hi rehne do ya naya fetch karo
+                    }
+                  },
+                  child: const Text('Change', style: TextStyle(color: Color(0xFF233933))),
+                ),
+              )
+          ],
+        ),
+        _buildPaymentMethod(context),
       ],
     );
   }
@@ -329,13 +370,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       );
     }
+
     String cardNumber = _selectedCard!['card_number'] ?? '';
-    String last4 = cardNumber.length >= 4 ? cardNumber.substring(cardNumber.length - 4) : '****';
+    String last4 = cardNumber.replaceAll(' ', '');
+    last4 = last4.length >= 4 ? last4.substring(last4.length - 4) : '****';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [const Icon(Icons.credit_card, color: Colors.blue), const SizedBox(width: 15), Text('Visa Card (.... $last4)', style: const TextStyle(fontWeight: FontWeight.w500))]), const Icon(Icons.check_circle, color: Color(0xFF233933))]),
+      child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+                children: [
+                  const Icon(Icons.credit_card, color: Colors.blue),
+                  const SizedBox(width: 15),
+                  Text('Visa Card (.... $last4)', style: const TextStyle(fontWeight: FontWeight.w500)),
+                ]
+            ),
+            const Icon(Icons.check_circle, color: Color(0xFF233933))
+          ]
+      ),
     );
   }
 

@@ -28,7 +28,7 @@ class _HomePageState extends State<HomePage> {
   String? _avatarUrl;
 
   List<Map<String, dynamic>> _categories = [];
-  List<Map<String, dynamic>> _allProducts = []; // NAYA: Saare products k liye
+  List<Map<String, dynamic>> _allProducts = [];
   List<Map<String, dynamic>> _freshFruits = [];
   List<Map<String, dynamic>> _dailyDairy = [];
 
@@ -64,15 +64,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // --- BUG FIX: Added Order and All Products List ---
   Future<void> _fetchHomeData() async {
     try {
       final supabase = Supabase.instance.client;
-
-      // 1. Categories fetch karein
       final categoriesData = await supabase.from('categories').select();
-
-      // 2. Products fetch karein (Naya order lagaya hai taake latest pehle aayen)
       final productsData = await supabase
           .from('products')
           .select()
@@ -83,7 +78,6 @@ class _HomePageState extends State<HomePage> {
           _categories = List<Map<String, dynamic>>.from(categoriesData);
           _allProducts = List<Map<String, dynamic>>.from(productsData);
 
-          // Specific categories filtering
           _freshFruits = _allProducts.where((p) => p['category'] == 'Fresh Fruits').toList();
           _dailyDairy = _allProducts.where((p) => p['category'] == 'Daily Dairy').toList();
 
@@ -107,7 +101,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _fetchHomeData, // Pull to refresh add kiya hai
+          onRefresh: _fetchHomeData,
           color: const Color(0xFF233933),
           child: SingleChildScrollView(
             child: Column(
@@ -116,24 +110,17 @@ class _HomePageState extends State<HomePage> {
                 _buildHeader(context),
                 _buildSearchBar(context),
                 const HomeBannerSlider(),
-
                 _buildSectionHeader('Categories'),
                 _buildCircularCategories(),
-
                 _buildViewAllButton(),
-
-                // --- NAYA SECTION: Recently Added (Taake har naya product yahan show ho) ---
                 if (_allProducts.isNotEmpty) ...[
                   _buildSectionHeader('Recently Added'),
                   _buildHorizontalProductList(context, _allProducts, _isLoadingProducts),
                 ],
-
                 _buildSectionHeader('Fresh Fruits'),
                 _buildHorizontalProductList(context, _freshFruits, _isLoadingProducts),
-
                 _buildSectionHeader('Daily Dairy'),
                 _buildHorizontalProductList(context, _dailyDairy, _isLoadingProducts),
-
                 const SizedBox(height: 100),
               ],
             ),
@@ -141,58 +128,15 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(context),
-      floatingActionButton: _buildFab(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage())),
+        backgroundColor: const Color(0xFF233933),
+        shape: const CircleBorder(),
+        child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 30),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
-
-  // --- Helper Widgets to keep code clean ---
-
-  Widget _buildSearchBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: TextField(
-        textInputAction: TextInputAction.search,
-        onSubmitted: (query) {
-          if (query.trim().isNotEmpty) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => SearchResultsPage(searchQuery: query)));
-          }
-        },
-        decoration: InputDecoration(
-          hintText: 'Search products...',
-          suffixIcon: const Icon(Icons.search, color: Colors.grey),
-          filled: true, fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildViewAllButton() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: ActionChip(
-          label: const Text('View All Categories', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: Colors.black12),
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryGridPage())),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFab() {
-    return FloatingActionButton(
-      onPressed: () => sendTestNotification(),
-      backgroundColor: const Color(0xFF233933),
-      shape: const CircleBorder(),
-      child: const Icon(Icons.add, color: Colors.white, size: 30),
-    );
-  }
-
-  // --- Existing UI Methods (Keeping them same but optimized) ---
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
@@ -202,9 +146,10 @@ class _HomePageState extends State<HomePage> {
           GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage())).then((_) => _fetchUserData()),
             child: CircleAvatar(
-              radius: 25, backgroundColor: Colors.grey.shade300,
-              backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-              child: _avatarUrl == null ? const Icon(Icons.person, color: Colors.white) : null,
+              radius: 25,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: (_avatarUrl != null && _avatarUrl!.isNotEmpty) ? NetworkImage(_avatarUrl!) : null,
+              child: (_avatarUrl == null || _avatarUrl!.isEmpty) ? const Icon(Icons.person, color: Colors.white) : null,
             ),
           ),
           const SizedBox(width: 12),
@@ -228,10 +173,98 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildSearchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: TextField(
+        onSubmitted: (query) {
+          if (query.trim().isNotEmpty) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => SearchResultsPage(searchQuery: query)));
+          }
+        },
+        decoration: InputDecoration(
+          hintText: 'Search products...',
+          suffixIcon: const Icon(Icons.search, color: Colors.grey),
+          filled: true, fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return BottomAppBar(
+      height: 70, color: Colors.white, shape: const CircularNotchedRectangle(), notchMargin: 8,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryGridPage()))),
+          const SizedBox(width: 40),
+          IconButton(icon: const Icon(Icons.favorite_border, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage()))),
+          // PROFILE ICON WAPAS ADD KIYA HAI
+          IconButton(
+              icon: const Icon(Icons.person_outline, color: Colors.grey),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage())).then((_) => _fetchUserData())
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ... (Baqi widgets jaise _buildHorizontalProductList, _buildProductCard wagera wahi hain jo pehle thay)
+
+  Widget _buildSectionHeader(String title) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)));
+
+  Widget _buildCircularCategories() {
+    if (_isLoadingCategories) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Color(0xFF233933))));
+    return SizedBox(
+      height: 100,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          var cat = _categories[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CategoryProductsPage(categoryName: cat['name'] ?? ''))),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 30, backgroundColor: Colors.white,
+                    child: Padding(padding: const EdgeInsets.all(12.0), child: CachedNetworkImage(imageUrl: cat['img'] ?? '', fit: BoxFit.contain, errorWidget: (context, url, error) => const Icon(Icons.category))),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(cat['name'] ?? '', style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildViewAllButton() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: ActionChip(
+          label: const Text('View All Categories', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Colors.black12),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryGridPage())),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHorizontalProductList(BuildContext context, List<Map<String, dynamic>> products, bool isLoading) {
     if (isLoading) return const SizedBox(height: 230, child: Center(child: CircularProgressIndicator(color: Color(0xFF233933))));
-    if (products.isEmpty) return const SizedBox.shrink(); // Empty filter hide kar dega
-
+    if (products.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 230,
       child: ListView.builder(
@@ -280,7 +313,7 @@ class _HomePageState extends State<HomePage> {
                           Text(pPrice, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                           GestureDetector(
                             onTap: () {
-                              context.read<CartProvider>().addToCart(pName, pName, pPrice, pImg, 1);
+                              context.read<CartProvider>().addToCart(product['id'].toString(), pName, pPrice, pImg, 1);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to cart!'), duration: Duration(seconds: 1)));
                             },
                             child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: const Color(0xFFF1F1F1), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.add, size: 20)),
@@ -315,39 +348,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildCircularCategories() {
-    if (_isLoadingCategories) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator(color: Color(0xFF233933))));
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          var cat = _categories[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CategoryProductsPage(categoryName: cat['name'] ?? ''))),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 30, backgroundColor: Colors.white,
-                    child: Padding(padding: const EdgeInsets.all(12.0), child: CachedNetworkImage(imageUrl: cat['img'] ?? '', fit: BoxFit.contain, errorWidget: (context, url, error) => const Icon(Icons.category))),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(cat['name'] ?? '', style: const TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)));
-
   Widget _buildNotificationIcon() {
     return Consumer<NotificationProvider>(
       builder: (context, notiProvider, child) {
@@ -362,37 +362,9 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
-
-  Widget _buildBottomNav(BuildContext context) {
-    return BottomAppBar(
-      height: 70, color: Colors.white, shape: const CircularNotchedRectangle(), notchMargin: 8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(icon: const Icon(Icons.home_filled, color: Color(0xFF233933)), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.grid_view_rounded, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryGridPage()))),
-          const SizedBox(width: 40),
-          IconButton(icon: const Icon(Icons.favorite_border, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesPage()))),
-          IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.grey), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CartPage()))),
-        ],
-      ),
-    );
-  }
-
-  // --- Test Notification Logic ---
-  Future<void> sendTestNotification() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    try {
-      await Supabase.instance.client.from('notifications').insert({
-        'user_id': user.id, 'title': 'Order Placed! 🛍️', 'subtitle': 'Aap ka naya order confirm ho gaya hai.', 'is_read': false,
-      });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification Sent! 🎉'), backgroundColor: Color(0xFF233933)));
-    } catch (e) { debugPrint('Error: $e'); }
-  }
 }
 
-// --- HomeBannerSlider class remains same as your provided code ---
+// Banner Slider class wahi rahegi
 class HomeBannerSlider extends StatefulWidget {
   const HomeBannerSlider({super.key});
   @override
@@ -408,7 +380,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     try {
       final response = await Supabase.instance.client.from('banners').select('image_url').order('created_at', ascending: false);
       if (mounted) { setState(() { _bannerImages = List<String>.from(response.map((item) => item['image_url'])); _isLoading = false; }); }
-    } catch (e) { setState(() => _isLoading = false); }
+    } catch (e) { if (mounted) setState(() => _isLoading = false); }
   }
   @override
   Widget build(BuildContext context) {
