@@ -7,7 +7,9 @@ import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 import 'manage_products_page.dart';
 import 'manage_banners_page.dart';
 import 'manage_orders_page.dart';
-import 'customers_page.dart'; // NAYA IMPORT: Customers page k liye
+import 'customers_page.dart';
+// 1. NAYA IMPORT: Send Notification page k liye
+import 'send_notification_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -115,17 +117,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 4. Customers Card (AB ACTIVE HAI)
+                  // 4. Customers Card
                   _buildDashboardCard(
                       context,
                       'Customers',
                       Icons.people_outline,
                       Colors.green,
                           () {
-                        // NAYA LOGIC: Navigation to Customers Page
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const CustomersPage()),
+                        );
+                      }
+                  ),
+
+                  // 5. NAYA CARD: Send Notification Card
+                  _buildDashboardCard(
+                      context,
+                      'Send Broadcast',
+                      Icons.campaign_outlined,
+                      Colors.redAccent,
+                          () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SendNotificationPage()),
                         );
                       }
                   ),
