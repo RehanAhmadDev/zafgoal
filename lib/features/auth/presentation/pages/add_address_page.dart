@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Naya Import
+import 'package:flutter/services.dart'; // Naya Import Formatter k liye
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
-// 1. Isay StatefulWidget may tabdeel kar diya taake Loading aur Data handle ho sakay
 class AddAddressPage extends StatefulWidget {
   const AddAddressPage({super.key});
 
@@ -15,7 +15,6 @@ class AddAddressPage extends StatefulWidget {
 class _AddAddressPageState extends State<AddAddressPage> {
   bool _isLoading = false;
 
-  // 2. Data uthane k liye Controllers
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -34,14 +33,25 @@ class _AddAddressPageState extends State<AddAddressPage> {
     super.dispose();
   }
 
-  // --- 3. Supabase may Address Save karne ka Logic ---
+  // --- Supabase may Address Save karne ka Logic ---
   Future<void> _saveAddress() async {
-    // Validation: Check karein k koi zaroori field khali to nahi
+    // 1. Validation: Check karein k koi bhi field khali to nahi
     if (_titleController.text.trim().isEmpty ||
+        _nameController.text.trim().isEmpty ||
         _phoneController.text.trim().isEmpty ||
-        _streetController.text.trim().isEmpty) {
+        _streetController.text.trim().isEmpty ||
+        _cityController.text.trim().isEmpty ||
+        _zipController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Meharbani karke tamam khali jaghen bhar dein'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    // 2. Validation: Phone number 11 digits ka hona chahiye
+    if (_phoneController.text.trim().length < 11) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone number 11 digits ka hona chahiye'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -68,7 +78,6 @@ class _AddAddressPageState extends State<AddAddressPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Address Saved Successfully!'), backgroundColor: Colors.green),
         );
-        // Address save hone k baad Checkout page par wapas bhej do
         Navigator.pop(context);
       }
     } catch (e) {
@@ -137,7 +146,6 @@ class _AddAddressPageState extends State<AddAddressPage> {
                 children: [
                   const SizedBox(height: 10),
 
-                  // Har CustomTextField may ab controller pass kiya gaya hai
                   _buildLabel('Location Label (e.g. Home, Office)'),
                   CustomTextField(controller: _titleController, hintText: 'Home'),
 
@@ -147,7 +155,16 @@ class _AddAddressPageState extends State<AddAddressPage> {
 
                   const SizedBox(height: 16),
                   _buildLabel('Phone Number'),
-                  CustomTextField(controller: _phoneController, hintText: '+92 3XX XXXXXXX'),
+                  // --- Phone Number Field Update ---
+                  CustomTextField(
+                    controller: _phoneController,
+                    hintText: '03XXXXXXXXX',
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11),
+                    ],
+                  ),
 
                   const SizedBox(height: 16),
                   _buildLabel('Street Address'),
@@ -180,7 +197,6 @@ class _AddAddressPageState extends State<AddAddressPage> {
 
                   const SizedBox(height: 30),
 
-                  // Save Button with Loading State
                   _isLoading
                       ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
                       : PrimaryButton(

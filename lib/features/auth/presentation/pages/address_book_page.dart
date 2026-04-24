@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:zafgoal/core/theme/app_colors.dart';
 import 'add_address_page.dart';
 
 class AddressBookPage extends StatefulWidget {
@@ -29,7 +30,7 @@ class _AddressBookPageState extends State<AddressBookPage> {
             .from('addresses')
             .select()
             .eq('user_id', user.id)
-            .order('created_at', ascending: false); // Naye address upar aayenge
+            .order('created_at', ascending: false);
 
         if (mounted) {
           setState(() {
@@ -44,6 +45,57 @@ class _AddressBookPageState extends State<AddressBookPage> {
     }
   }
 
+  // --- NAYA LOGIC: Address Delete Karna ---
+  Future<void> _deleteAddress(String id) async {
+    // Pehle user se confirmation lein
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Address', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to delete this address?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Supabase se delete karein
+      await Supabase.instance.client.from('addresses').delete().eq('id', id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Address deleted successfully!'), backgroundColor: Colors.red),
+        );
+        _fetchAddresses(); // List ko dubara refresh karein
+      }
+    } catch (e) {
+      debugPrint('Error deleting address: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,32 +105,30 @@ class _AddressBookPageState extends State<AddressBookPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context), // Agar bina select kiye wapas jana ho
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text('My Addresses', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933)))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
           : _addresses.isEmpty
           ? _buildEmptyState()
           : _buildAddressList(),
 
-      // --- Naya address add karne ka floating button ---
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF233933),
+        backgroundColor: AppColors.primaryDark,
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddAddressPage()),
-          ).then((_) => _fetchAddresses()); // Add karne k baad wapas aaye toh refresh kare
+          ).then((_) => _fetchAddresses());
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  // Agar koi address save nahi hai
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -94,7 +144,6 @@ class _AddressBookPageState extends State<AddressBookPage> {
     );
   }
 
-  // Save kiye gaye addresses ki list
   Widget _buildAddressList() {
     return ListView.builder(
       padding: const EdgeInsets.all(20),
@@ -103,12 +152,12 @@ class _AddressBookPageState extends State<AddressBookPage> {
         final address = _addresses[index];
         return GestureDetector(
           onTap: () {
-            // Jadoo: Tap karne par selected address data Checkout Page ko wapas bhej dega
+            // Tap karne par Checkout Page ko wapas bhej dega
             Navigator.pop(context, address);
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 15),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(15), // Padding thori adjust ki
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -121,7 +170,7 @@ class _AddressBookPageState extends State<AddressBookPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(color: Color(0xFFF5F5F5), shape: BoxShape.circle),
-                  child: const Icon(Icons.location_on, color: Color(0xFF233933)),
+                  child: const Icon(Icons.location_on, color: AppColors.primaryDark),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
@@ -136,7 +185,12 @@ class _AddressBookPageState extends State<AddressBookPage> {
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+
+                // --- NAYA LOGIC: Delete Button ---
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () => _deleteAddress(address['id'].toString()),
+                ),
               ],
             ),
           ),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Naya import formatters k liye
 import 'package:zafgoal/core/theme/app_colors.dart';
 
 class CustomTextField extends StatefulWidget {
   final String hintText;
   final bool isPassword;
-  final TextEditingController? controller; // Yahan controller add kar diya gaya hai
+  final TextEditingController? controller;
   final Widget? suffixIcon;
+  final TextInputType? keyboardType; // Naya variable
+  final List<TextInputFormatter>? inputFormatters; // Naya variable
 
   const CustomTextField({
     super.key,
@@ -13,6 +16,8 @@ class CustomTextField extends StatefulWidget {
     this.isPassword = false,
     this.controller,
     this.suffixIcon,
+    this.keyboardType,
+    this.inputFormatters,
   });
 
   @override
@@ -31,30 +36,25 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     return TextField(
-      controller: widget.controller, // TextField ko controller pass kar diya
+      controller: widget.controller,
       obscureText: _obscureText,
+      keyboardType: widget.keyboardType, // Yahan apply kiya
+      inputFormatters: widget.inputFormatters, // Yahan apply kiya
       decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
         filled: true,
-        fillColor: AppColors.background, // Ya Colors.white, jo aapke design mein hai
+        fillColor: AppColors.background,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-
-        // Password k aagay ankh (eye) ka icon lagane k liye
         suffixIcon: widget.isPassword
             ? IconButton(
           icon: Icon(
             _obscureText ? Icons.visibility_off : Icons.visibility,
             color: Colors.grey,
           ),
-          onPressed: () {
-            setState(() {
-              _obscureText = !_obscureText;
-            });
-          },
+          onPressed: () => setState(() => _obscureText = !_obscureText),
         )
             : widget.suffixIcon,
-
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.grey.shade200),
