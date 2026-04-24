@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
-import 'add_address_page.dart';
+import '../../../auth/presentation/pages/add_address_page.dart';
 
 class AddressBookPage extends StatefulWidget {
   const AddressBookPage({super.key});

@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
-import 'add_address_page.dart';
+import '../../../auth/presentation/pages/add_address_page.dart';
 import 'add_payment_card_page.dart';
 import 'address_book_page.dart';
 import 'order_detail_page.dart';

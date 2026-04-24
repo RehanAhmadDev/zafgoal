@@ -3,8 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 
 // Import for HomePage
-import 'admin_dashboard.dart';
-import 'home_page.dart';
+import '../../../admin/presentation/pages/admin_dashboard.dart';
+import '../../../user/presentation/pages/home_page.dart';
+
 // --- NAYA IMPORT: Admin Dashboard ke liye ---
 // Agar path thora mukhtalif ho toh isay adjust kar lijiye ga
 

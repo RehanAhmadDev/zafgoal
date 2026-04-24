@@ -3,8 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:zafgoal/features/auth/presentation/pages/profile_page.dart';
-import 'package:zafgoal/features/auth/presentation/pages/search_results_page.dart';
+import 'package:zafgoal/features/user/presentation/pages/profile_page.dart';
+import 'package:zafgoal/features/user/presentation/pages/search_results_page.dart';
 import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/providers/favorite_provider.dart';
 import 'package:zafgoal/providers/notification_provider.dart';

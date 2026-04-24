@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:zafgoal/features/auth/presentation/pages/product_detail_page.dart';
+import 'package:zafgoal/features/user/presentation/pages/product_detail_page.dart';
 import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 

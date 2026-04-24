@@ -5,10 +5,10 @@ import 'package:zafgoal/core/constants/app_assets.dart';
 import 'package:zafgoal/shared/widgets/custom_text_field.dart';
 import 'package:zafgoal/shared/widgets/primary_button.dart';
 
-import 'admin_dashboard.dart';
+import '../../../admin/presentation/pages/admin_dashboard.dart';
 import 'forgot_password_page.dart';
 import 'choose_account_page.dart';
-import 'home_page.dart';
+import '../../../user/presentation/pages/home_page.dart';
 // --- NAYA IMPORT: Admin Dashboard ke liye ---
 
 
