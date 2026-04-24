@@ -5,7 +5,8 @@ import 'package:zafgoal/core/theme/app_colors.dart';
 // --- IMPORTS ---
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 import 'manage_products_page.dart';
-import 'manage_banners_page.dart'; // NAYA IMPORT: Banners page k liye
+import 'manage_banners_page.dart';
+import 'manage_orders_page.dart'; // NAYA IMPORT: Orders page k liye
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -85,25 +86,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 2. Manage Orders Card
+                  // 2. Manage Orders Card (AB ACTIVE HAI)
                   _buildDashboardCard(
                       context,
                       'Manage Orders',
                       Icons.shopping_bag_outlined,
                       Colors.orange,
                           () {
-                        _showComingSoonMessage('Manage Orders');
+                        // NAYA LOGIC: Navigation to Manage Orders Page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ManageOrdersPage()),
+                        );
                       }
                   ),
 
-                  // 3. Manage Banners Card (AB ACTIVE HAI)
+                  // 3. Manage Banners Card
                   _buildDashboardCard(
                       context,
                       'Manage Banners',
                       Icons.view_carousel_outlined,
                       Colors.purple,
                           () {
-                        // NAYA LOGIC: Navigation to Manage Banners Page
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ManageBannersPage()),
@@ -118,6 +122,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Icons.people_outline,
                       Colors.green,
                           () {
+                        // Abhi k liye Coming Soon, iska page hum next step may banayenge
                         _showComingSoonMessage('Customers');
                       }
                   ),
