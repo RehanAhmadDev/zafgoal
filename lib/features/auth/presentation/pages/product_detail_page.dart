@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 1. Provider import kiya
-import 'package:zafgoal/providers/cart_provider.dart'; // 2. Apna CartProvider import kiya
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:zafgoal/providers/cart_provider.dart';
 
-// Isay StatefulWidget bana diya taake Quantity change ho sakay
 class ProductDetailPage extends StatefulWidget {
-  // Database se Product ka ID aur Image bhi mangwana chahiye, abhi k liye mai String lay raha hu
   final String title;
   final String price;
   final String imageUrl;
@@ -13,7 +12,7 @@ class ProductDetailPage extends StatefulWidget {
     super.key,
     required this.title,
     required this.price,
-    this.imageUrl = 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=600', // Default image agar pichlay page se na aye
+    this.imageUrl = 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=600',
   });
 
   @override
@@ -21,8 +20,55 @@ class ProductDetailPage extends StatefulWidget {
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  // Default quantity 1 hogi
   int _quantity = 1;
+
+  // --- NAYE VARIABLES: Database se data save karne k liye ---
+  String _description = '';
+  List<String> _features = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProductDetails();
+  }
+
+  // --- NAYA LOGIC: Supabase se real details fetch karna ---
+  Future<void> _fetchProductDetails() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('products')
+          .select('description, features')
+          .eq('name', widget.title)
+          .maybeSingle();
+
+      if (mounted) {
+        setState(() {
+          _description = data?['description'] ?? 'No description available for this product yet.';
+
+          var fetchedFeatures = data?['features'];
+          if (fetchedFeatures is List) {
+            _features = List<String>.from(fetchedFeatures.map((e) => e.toString()));
+          } else if (fetchedFeatures is String) {
+            _features = [fetchedFeatures];
+          } else {
+            _features = ['Premium Quality Guaranteed.'];
+          }
+
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching product details: $e');
+      if (mounted) {
+        setState(() {
+          _description = 'Details currently unavailable.';
+          _features = ['Information unavailable.'];
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   void _increaseQty() {
     setState(() {
@@ -36,6 +82,20 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         _quantity--;
       }
     });
+  }
+
+  // --- NAYA LOGIC: Total Price Calculate Karna ---
+  String get _calculatedTotalPrice {
+    // Price text ("£15.99") se sirf number ("15.99") nikalna
+    String cleanPrice = widget.price.replaceAll(RegExp(r'[^0-9.]'), '');
+    double priceVal = double.tryParse(cleanPrice) ?? 0.0;
+
+    // Quantity se multiply karna
+    double total = priceVal * _quantity;
+
+    // Wapas symbol lagana (agar mojood ho)
+    String symbol = widget.price.startsWith('£') ? '£' : '';
+    return '$symbol${total.toStringAsFixed(2)}';
   }
 
   @override
@@ -58,7 +118,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 1. Search Bar
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: TextField(
@@ -72,7 +131,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
             ),
 
-            // 2. Main Product Card
             Container(
               margin: const EdgeInsets.all(20),
               padding: const EdgeInsets.all(15),
@@ -80,7 +138,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product Image
                   ClipRRect(
                     borderRadius: BorderRadius.circular(25),
                     child: Image.network(
@@ -92,7 +149,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Title & Price Info
                   Text(widget.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 5),
                   Text('Price: ${widget.price}', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
@@ -101,14 +157,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   const SizedBox(height: 20),
                   const Text('Product Description :', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Our Class A Large Free Range eggs are sourced directly from trusted British farms where hens are free to roam from dawn until dusk...',
-                    style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
+
+                  // --- LIVE DESCRIPTION UI ---
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933)))
+                      : Text(
+                    _description,
+                    style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.5),
                   ),
 
                   const SizedBox(height: 25),
 
-                  // Quantity & Price Row
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                     decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(15)),
@@ -131,7 +190,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             ),
                           ],
                         ),
-                        Text(widget.price, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        // --- UPDATED: Ab yahan dynamic total price aayegi ---
+                        Text(_calculatedTotalPrice, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -139,30 +199,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
             ),
 
-            // 3. Key Features Section
             _buildKeyFeatures(),
 
             const SizedBox(height: 20),
 
-            // 4. Bottom Buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      // --- NAYA LOGIC: ADD TO CART ---
                       onPressed: () {
-                        // CartProvider ka function call kar rahay hain
                         context.read<CartProvider>().addToCart(
-                          widget.title, // abhi id nahi hai to name ko hi id maan rahay hain
+                          widget.title,
                           widget.title,
                           widget.price,
                           widget.imageUrl,
-                          _quantity, // Selected quantity bhej rahay hain
+                          _quantity,
                         );
 
-                        // User ko asaan sa message dikhana
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('${widget.title} added to cart!'),
@@ -225,19 +280,28 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         children: [
           const Text('Key Features', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          _featureItem('British Lion Quality: Guaranteed quality and vaccinated against Salmonella.'),
+
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator(color: Color(0xFF233933), strokeWidth: 2))
+          else if (_features.isEmpty)
+            _featureItem('No features listed.')
+          else
+            ..._features.map((feature) => _featureItem(feature)),
         ],
       ),
     );
   }
 
   Widget _featureItem(String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-        Expanded(child: Text(text, style: const TextStyle(color: Colors.grey, fontSize: 13))),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Expanded(child: Text(text, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+        ],
+      ),
     );
   }
 }

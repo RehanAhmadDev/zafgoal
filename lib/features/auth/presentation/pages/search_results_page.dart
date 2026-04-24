@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:zafgoal/features/auth/presentation/pages/product_detail_page.dart';
 import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
-import 'package:zafgoal/shared/widgets/custom_text_field.dart';
-
 
 class SearchResultsPage extends StatefulWidget {
   final String searchQuery;
@@ -18,8 +16,15 @@ class SearchResultsPage extends StatefulWidget {
 
 class _SearchResultsPageState extends State<SearchResultsPage> {
   bool _isLoading = true;
+
+  // Naye variables: Asli data aur filtered data alag rakhne k liye
+  List<dynamic> _allFetchedResults = [];
   List<dynamic> _searchResults = [];
   late TextEditingController _searchController;
+
+  // Filter ke variables
+  RangeValues _priceRange = const RangeValues(0, 150); // Default range
+  String _sortBy = 'Newest';
 
   @override
   void initState() {
@@ -34,7 +39,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     super.dispose();
   }
 
-  // --- NAYA LOGIC: Supabase se Data Dhoondhna ---
+  // --- Supabase se Data Dhoondhna ---
   Future<void> _performSearch(String query) async {
     setState(() => _isLoading = true);
 
@@ -45,15 +50,52 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           .ilike('name', '%$query%'); // Case-insensitive search
 
       if (mounted) {
-        setState(() {
-          _searchResults = data;
-          _isLoading = false;
-        });
+        _allFetchedResults = data;
+        _applyFilters(); // Data aane k baad filter apply karna
       }
     } catch (e) {
       debugPrint('Search Error: $e');
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // --- NAYA LOGIC: Filters aur Sorting Apply Karna ---
+  void _applyFilters() {
+    List<dynamic> temp = List.from(_allFetchedResults);
+
+    // 1. Price Range Filter
+    temp = temp.where((item) {
+      // "£15.99" jesay text se sirf number (15.99) nikalna
+      String priceStr = item['price'].toString().replaceAll(RegExp(r'[^0-9.]'), '');
+      double priceVal = double.tryParse(priceStr) ?? 0.0;
+      return priceVal >= _priceRange.start && priceVal <= _priceRange.end;
+    }).toList();
+
+    // 2. Sorting Logic
+    if (_sortBy == 'Lowest Price') {
+      temp.sort((a, b) {
+        double pA = double.tryParse(a['price'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        double pB = double.tryParse(b['price'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        return pA.compareTo(pB); // Choti price pehle
+      });
+    } else if (_sortBy == 'Highest Price') {
+      temp.sort((a, b) {
+        double pA = double.tryParse(a['price'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        double pB = double.tryParse(b['price'].toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        return pB.compareTo(pA); // Bari price pehle
+      });
+    } else if (_sortBy == 'Newest') {
+      temp.sort((a, b) {
+        DateTime dA = DateTime.tryParse(a['created_at'].toString()) ?? DateTime.now();
+        DateTime dB = DateTime.tryParse(b['created_at'].toString()) ?? DateTime.now();
+        return dB.compareTo(dA); // Naya pehle
+      });
+    }
+
+    setState(() {
+      _searchResults = temp;
+      _isLoading = false;
+    });
   }
 
   @override
@@ -70,7 +112,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         title: const Text('Search Results', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          // Filter Button
           IconButton(
             icon: const Icon(Icons.tune, color: AppColors.primaryDark),
             onPressed: () => _showFilterBottomSheet(context),
@@ -79,7 +120,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       ),
       body: Column(
         children: [
-          // --- Active Search Bar ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: TextField(
@@ -106,7 +146,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
           const SizedBox(height: 10),
 
-          // --- Live Results Count ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Align(
@@ -120,7 +159,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
           const SizedBox(height: 15),
 
-          // --- Grid of Products (Live Data) ---
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDark))
@@ -160,7 +198,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     );
   }
 
-  // --- Aap ka UI, lekin Database Data ke sath ---
   Widget _buildResultCard(BuildContext context, dynamic product) {
     return GestureDetector(
       onTap: () {
@@ -214,8 +251,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                           product['price'] ?? '',
                           style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)
                       ),
-
-                      // --- NAYA LOGIC: Direct Add to Cart ---
                       GestureDetector(
                         onTap: () {
                           context.read<CartProvider>().addToCart(
@@ -253,51 +288,81 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     );
   }
 
+  // --- NAYA LOGIC: Functional Filter Bottom Sheet ---
   void _showFilterBottomSheet(BuildContext context) {
+    // Temporary variables taake sirf "Apply" dabane par filter ho
+    RangeValues tempRange = _priceRange;
+    String tempSort = _sortBy;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(25),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Filter By', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              const Text('Price Range', style: TextStyle(fontWeight: FontWeight.bold)),
-              RangeSlider(
-                values: const RangeValues(10, 80),
-                max: 100,
-                divisions: 10,
-                activeColor: AppColors.primaryDark,
-                labels: const RangeLabels('£10', '£80'),
-                onChanged: (values) {},
-              ),
-              const SizedBox(height: 20),
-              const Text('Sort By', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
+        // StatefulBuilder bottom sheet ke andar live tabdeeli dikhane k liye hai
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(25),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ChoiceChip(label: const Text('Lowest Price'), selected: true, selectedColor: AppColors.primaryDark.withOpacity(0.2)),
-                  ChoiceChip(label: const Text('Highest Price'), selected: false),
-                  ChoiceChip(label: const Text('Newest'), selected: false),
+                  const Text('Filter By', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+
+                  const Text('Price Range', style: TextStyle(fontWeight: FontWeight.bold)),
+                  RangeSlider(
+                    values: tempRange,
+                    max: 150, // Aap apni items k hisab se isay barha bhi saktay hain
+                    divisions: 15,
+                    activeColor: AppColors.primaryDark,
+                    labels: RangeLabels('£${tempRange.start.toInt()}', '£${tempRange.end.toInt()}'),
+                    onChanged: (values) {
+                      setModalState(() => tempRange = values);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  const Text('Sort By', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: ['Lowest Price', 'Highest Price', 'Newest'].map((sortOption) {
+                      return ChoiceChip(
+                        label: Text(sortOption),
+                        selected: tempSort == sortOption,
+                        selectedColor: AppColors.primaryDark.withOpacity(0.2),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setModalState(() => tempSort = sortOption);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 30),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      // Apply dabane par asali variables update karke filter lagao
+                      setState(() {
+                        _priceRange = tempRange;
+                        _sortBy = tempSort;
+                      });
+                      _applyFilters();
+                      Navigator.pop(context); // Bottom sheet band kar do
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryDark,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text('Apply Filters', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                ),
-                child: const Text('Apply Filters', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
