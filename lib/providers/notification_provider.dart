@@ -5,6 +5,7 @@ class NotificationProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = false;
   int _unreadCount = 0;
+  RealtimeChannel? _channel; // Naya: Channel ko save karne k liye
 
   List<Map<String, dynamic>> get notifications => _notifications;
   bool get isLoading => _isLoading;
@@ -15,76 +16,45 @@ class NotificationProvider extends ChangeNotifier {
     subscribeToNotifications();
   }
 
+  // --- 1. Initial Data Fetch ---
   Future<void> fetchNotifications() async {
-    // Sirf pehli baar loading state dikhayenge
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
     if (_notifications.isEmpty) {
       _isLoading = true;
       notifyListeners();
     }
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        final response = await Supabase.instance.client
-            .from('notifications')
-            .select()
-            .eq('user_id', user.id)
-            .order('created_at', ascending: false);
+      final response = await Supabase.instance.client
+          .from('notifications')
+          .select()
+          .eq('user_id', user.id)
+          .order('created_at', ascending: false);
 
-        _notifications = List<Map<String, dynamic>>.from(response);
-
-        // Sirf wo ginte hain jo parhay nahi gaye (is_read == false)
-        // Null values se bachne k liye check lagaya hai
-        _unreadCount = _notifications.where((n) => n['is_read'] == false).length;
-      }
+      _notifications = List<Map<String, dynamic>>.from(response);
+      _unreadCount = _notifications.where((n) => n['is_read'] == false).length;
     } catch (e) {
       debugPrint('Fetch Error: $e');
-    }
-
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  // --- FINAL & STRONGER MARK AS READ ---
-  Future<void> markAsRead() async {
-    // 1. UI ko foran zero karo taake bell ka badge gayab ho jaye
-    _unreadCount = 0;
-    notifyListeners();
-
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        // 2. Database mein is user ki TAMAM notifications ko TRUE kar do
-        // Hum ne filter hata diya hai taake har row update ho jaye
-        final response = await Supabase.instance.client
-            .from('notifications')
-            .update({'is_read': true})
-            .eq('user_id', user.id)
-            .select(); // .select() lagane se confirmation milti hai
-
-        debugPrint('Database: ${response.length} rows marked as read.');
-
-        // 3. THORA SA INTEZAR (500ms): Database processing k liye gap
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        // 4. Fresh data mangwayein taake local list bhi update ho jaye
-        await fetchNotifications();
-      }
-    } catch (e) {
-      debugPrint('MarkAsRead Error: $e');
-      // Error ki surat mein wapas data mangwa lo
-      fetchNotifications();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
+  // --- 2. Real-time Subscription (Optimized) ---
   void subscribeToNotifications() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    Supabase.instance.client
+    // Pehle purane channel ko band karo agar koi hai
+    _channel?.unsubscribe();
+
+    _channel = Supabase.instance.client
         .channel('public:notifications')
         .onPostgresChanges(
-      event: PostgresChangeEvent.all,
+      event: PostgresChangeEvent.insert, // Jab naya row add ho
       schema: 'public',
       table: 'notifications',
       filter: PostgresChangeFilter(
@@ -93,10 +63,49 @@ class NotificationProvider extends ChangeNotifier {
         value: user.id,
       ),
       callback: (payload) {
-        debugPrint('Real-time notification received!');
-        fetchNotifications();
+        debugPrint('New Notification Arrived!');
+        // Optimization: Poori list fetch karne k bajaye sirf naya record top par dalo
+        _notifications.insert(0, payload.newRecord);
+        _unreadCount++;
+        notifyListeners();
       },
     )
         .subscribe();
+  }
+
+  // --- 3. Mark As Read (Smarter Logic) ---
+  Future<void> markAsRead() async {
+    if (_unreadCount == 0) return;
+
+    // UI Fast Update: Pehle badge zero karo
+    _unreadCount = 0;
+    notifyListeners();
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await Supabase.instance.client
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('user_id', user.id)
+            .eq('is_read', false); // Sirf unhein update karo jo pehle se read nahi hain
+
+        // Local list ko update karo bina fetch kiye (battery saving)
+        for (var n in _notifications) {
+          n['is_read'] = true;
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('MarkAsRead Error: $e');
+      fetchNotifications(); // Error ki surat mein wapas fetch kar lo
+    }
+  }
+
+  // --- 4. Cleanup ---
+  @override
+  void dispose() {
+    _channel?.unsubscribe(); // App band hote waqt listener khatam karo
+    super.dispose();
   }
 }

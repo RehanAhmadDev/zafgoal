@@ -5,7 +5,6 @@ import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/features/auth/presentation/pages/splash_page.dart';
 import 'package:zafgoal/providers/cart_provider.dart';
 import 'package:zafgoal/providers/favorite_provider.dart';
-// niche wala import lazmi check karein k path sahi hai
 import 'package:zafgoal/providers/notification_provider.dart';
 
 void main() async {
@@ -21,8 +20,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => FavoriteProvider()),
-        // Yahan NotificationProvider ko register kar diya hai
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        // NAYA: lazy: false add kar diya hai taake app on hote hi listener start ho jaye
+        ChangeNotifierProvider(create: (_) => NotificationProvider(), lazy: false),
       ],
       child: const MyApp(),
     ),
