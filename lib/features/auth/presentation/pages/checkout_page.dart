@@ -18,22 +18,18 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   bool _isLoading = false;
-
   Map<String, dynamic>? _selectedAddress;
   bool _isLoadingAddress = true;
-
   Map<String, dynamic>? _selectedCard;
   bool _isLoadingCard = true;
 
   @override
   void initState() {
     super.initState();
-    // WidgetsBinding use karne ki ab zarurat nahi, initState may seedha call karein
     _fetchDefaultAddress();
     _fetchDefaultCard();
   }
 
-  // --- FIX: Sab se naya address fetch karne ka logic (No Red Line) ---
   Future<void> _fetchDefaultAddress() async {
     if (!mounted) return;
     setState(() => _isLoadingAddress = true);
@@ -44,7 +40,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             .from('addresses')
             .select()
             .eq('user_id', user.id)
-            .order('created_at', ascending: false) // Sahi Tareeqa: No curly braces
+            .order('created_at', ascending: false)
             .limit(1);
 
         if (mounted) {
@@ -55,12 +51,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
       }
     } catch (e) {
-      debugPrint('Address Error: $e');
       if (mounted) setState(() => _isLoadingAddress = false);
     }
   }
 
-  // --- FIX: Sab se naya card fetch karne ka logic (No Red Line) ---
   Future<void> _fetchDefaultCard() async {
     if (!mounted) return;
     setState(() => _isLoadingCard = true);
@@ -71,7 +65,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             .from('payment_cards')
             .select()
             .eq('user_id', user.id)
-            .order('created_at', ascending: false) // Sahi Tareeqa: No curly braces
+            .order('created_at', ascending: false)
             .limit(1);
 
         if (mounted) {
@@ -82,7 +76,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
       }
     } catch (e) {
-      debugPrint('Card Error: $e');
       if (mounted) setState(() => _isLoadingCard = false);
     }
   }
@@ -108,35 +101,47 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('Please login to place order');
 
+      // Profile details fetch karna Admin Panel k liye
+      final profileData = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .single();
+
+      // Items list map karna aap k CartItem model k 'image' variable k sath
       final itemsList = cart.items.map((item) => {
         'id': item.id,
         'name': item.name,
         'price': item.price,
         'quantity': item.quantity,
+        'image': item.image ?? '',
       }).toList();
 
+      // Final Insert Query (Matching SQL columns)
       final response = await Supabase.instance.client.from('orders').insert({
         'user_id': user.id,
+        'customer_name': profileData['full_name'] ?? 'User',
+        'customer_email': user.email,
         'total_amount': '£${cart.totalAmount.toStringAsFixed(2)}',
+        'address': _selectedAddress!['full_address'],
+        'phone': profileData['phone_number'] ?? 'N/A',
+        'status': 'Pending',
+        'payment_method': 'Card',
         'items': itemsList,
-        'delivery_address': _selectedAddress!['full_address'],
-        'status': 'pending'
       }).select().single();
 
       if (mounted) {
         String newOrderId = response['id'].toString();
-        String displayId = newOrderId.length > 8 ? newOrderId.substring(0, 8).toUpperCase() : newOrderId.toUpperCase();
-
         cart.clearCart();
         setState(() => _isLoading = false);
-        _showSuccessDialog(displayId, response['total_amount'].toString(), response['items']);
+        _showSuccessDialog(newOrderId, response['total_amount'].toString(), response['items']);
       }
 
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(content: Text('Order Failed: ${e.toString()}'), backgroundColor: Colors.red),
         );
       }
     }
@@ -206,30 +211,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildStepper(),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionHeader('Address'),
-                if (_selectedAddress != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 20),
-                    child: TextButton(
-                      onPressed: () async {
-                        // Refresh logic after return
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AddressBookPage()),
-                        );
-                        _fetchDefaultAddress();
-                      },
-                      child: const Text('Change', style: TextStyle(color: Color(0xFF233933))),
-                    ),
-                  )
-              ],
-            ),
-            _buildAddressCard(context),
-
+            _buildAddressSection(),
             _buildSectionHeader('Delivery Method'),
             _buildDeliveryMethod(),
             _buildSectionHeader('Payment Method'),
@@ -242,13 +224,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  Widget _buildAddressSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Address'),
+            if (_selectedAddress != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: TextButton(
+                  onPressed: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddressBookPage()));
+                    _fetchDefaultAddress();
+                  },
+                  child: const Text('Change', style: TextStyle(color: Color(0xFF233933))),
+                ),
+              )
+          ],
+        ),
+        _buildAddressCard(context),
+      ],
+    );
+  }
+
   Widget _buildStepper() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _stepCircle("1", "My Order", true, isCompleted: true),
+          _stepCircle("1", "Cart", true, isCompleted: true),
           _stepLine(true),
           _stepCircle("2", "Details", true),
           _stepLine(false),
@@ -274,64 +282,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget _stepLine(bool isFinished) {
-    return Container(width: 50, height: 2, color: isFinished ? const Color(0xFF233933) : Colors.black12, margin: const EdgeInsets.only(bottom: 20));
-  }
+  Widget _stepLine(bool isFinished) => Container(width: 50, height: 2, color: isFinished ? const Color(0xFF233933) : Colors.black12, margin: const EdgeInsets.only(bottom: 20));
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-    );
-  }
+  Widget _buildSectionHeader(String title) => Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)));
 
   Widget _buildAddressCard(BuildContext context) {
-    if (_isLoadingAddress) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
-    }
-
+    if (_isLoadingAddress) return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
     if (_selectedAddress == null) {
       return GestureDetector(
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAddressPage())).then((_) {
-            _fetchDefaultAddress();
-          });
-        },
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAddressPage())).then((_) => _fetchDefaultAddress()),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid)),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_location_alt_outlined, color: Colors.grey),
-              SizedBox(width: 10),
-              Text('Add Delivery Address', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-            ],
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300)),
+          child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_location_alt_outlined, color: Colors.grey), SizedBox(width: 10), Text('Add Delivery Address', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))]),
         ),
       );
     }
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        children: [
-          const Icon(Icons.location_on_outlined, color: Colors.green),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_selectedAddress!['title'] ?? 'Address', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(_selectedAddress!['full_address'] ?? 'No detail provided', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: Row(children: [const Icon(Icons.location_on_outlined, color: Colors.green), const SizedBox(width: 15), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_selectedAddress!['title'] ?? 'Address', style: const TextStyle(fontWeight: FontWeight.bold)), Text(_selectedAddress!['full_address'] ?? 'No detail', style: const TextStyle(color: Colors.grey, fontSize: 12))]))]),
     );
   }
 
@@ -340,116 +312,47 @@ class _CheckoutPageState extends State<CheckoutPage> {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.local_shipping_outlined, color: Colors.orange),
-              SizedBox(width: 15),
-              const Text('Standard Delivery (Free)', style: TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-          Icon(Icons.keyboard_arrow_down),
-        ],
-      ),
+      child: const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [Icon(Icons.local_shipping_outlined, color: Colors.orange), SizedBox(width: 15), Text('Standard Delivery (Free)', style: TextStyle(fontWeight: FontWeight.w500))]), Icon(Icons.keyboard_arrow_down)]),
     );
   }
 
   Widget _buildPaymentMethod(BuildContext context) {
-    if (_isLoadingCard) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
-    }
-
+    if (_isLoadingCard) return const Center(child: CircularProgressIndicator(color: Color(0xFF233933)));
     if (_selectedCard == null) {
       return GestureDetector(
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage())).then((_) {
-            _fetchDefaultCard();
-          });
-        },
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage())).then((_) => _fetchDefaultCard()),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid)),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_card, color: Colors.grey),
-              SizedBox(width: 10),
-              Text('Add Payment Method', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-            ],
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300)),
+          child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_card, color: Colors.grey), SizedBox(width: 10), Text('Add Payment Method', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))]),
         ),
       );
     }
-
     String cardNumber = _selectedCard!['card_number'] ?? '';
     String last4 = cardNumber.length >= 4 ? cardNumber.substring(cardNumber.length - 4) : '****';
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const AddPaymentCardPage())).then((_) {
-          _fetchDefaultCard();
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.credit_card, color: Colors.blue),
-                const SizedBox(width: 15),
-                Text('Visa Card (.... $last4)', style: const TextStyle(fontWeight: FontWeight.w500)),
-              ],
-            ),
-            const Icon(Icons.keyboard_arrow_right),
-          ],
-        ),
-      ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [const Icon(Icons.credit_card, color: Colors.blue), const SizedBox(width: 15), Text('Visa Card (.... $last4)', style: const TextStyle(fontWeight: FontWeight.w500))]), const Icon(Icons.check_circle, color: Color(0xFF233933))]),
     );
   }
 
   Widget _buildBottomSummary(BuildContext context, CartProvider cart) {
     return Container(
       padding: const EdgeInsets.all(25),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Column(
-        children: [
-          _summaryRow('Order Total :', '£${cart.totalAmount.toStringAsFixed(2)}'),
-          _summaryRow('Delivery :', '£0.00'),
-          const Divider(),
-          _summaryRow('Grand Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
-          const SizedBox(height: 20),
-
-          _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933)))
-              : PrimaryButton(
-            text: 'Confirm Order',
-            onPressed: () => _placeOrder(context, cart),
-          ),
-        ],
-      ),
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      child: Column(children: [
+        _summaryRow('Order Total :', '£${cart.totalAmount.toStringAsFixed(2)}'),
+        _summaryRow('Delivery :', '£0.00'),
+        const Divider(),
+        _summaryRow('Grand Total :', '£${cart.totalAmount.toStringAsFixed(2)}', isTotal: true),
+        const SizedBox(height: 20),
+        _isLoading ? const Center(child: CircularProgressIndicator(color: Color(0xFF233933))) : PrimaryButton(text: 'Confirm Order', onPressed: () => _placeOrder(context, cart)),
+      ]),
     );
   }
 
-  Widget _summaryRow(String label, String value, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal, fontSize: isTotal ? 18 : 14)),
-        ],
-      ),
-    );
-  }
+  Widget _summaryRow(String label, String value, {bool isTotal = false}) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)), Text(value, style: TextStyle(fontWeight: isTotal ? FontWeight.bold : FontWeight.normal, fontSize: isTotal ? 18 : 14))]));
 }
