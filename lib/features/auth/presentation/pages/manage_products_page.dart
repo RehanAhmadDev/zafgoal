@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zafgoal/core/theme/app_colors.dart';
 
 // --- NAYA IMPORT: Add Product Page ke liye ---
-import 'add_product_page.dart'; // Agar path thora mukhtalif ho to adjust kar lijiye ga
+import 'add_product_page.dart';
 
 class ManageProductsPage extends StatefulWidget {
   const ManageProductsPage({super.key});
@@ -26,7 +26,6 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
   Future<void> _fetchProducts() async {
     setState(() => _isLoading = true);
     try {
-      // Latest products pehle aayen is liye order by created_at lagaya hai
       final data = await Supabase.instance.client
           .from('products')
           .select()
@@ -51,7 +50,6 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
 
   // --- 2. Product Delete karne ka logic ---
   Future<void> _deleteProduct(int id, String name) async {
-    // Delete karne se pehle Admin se poochna
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -59,11 +57,11 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
         content: Text('Are you sure you want to delete "$name"? This cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false), // Cancel
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true), // Yes, delete
+            onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
@@ -73,7 +71,6 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
 
     if (!confirm) return;
 
-    // Agar Admin ne Yes kar diya toh Supabase se delete karo
     try {
       await Supabase.instance.client.from('products').delete().eq('id', id);
 
@@ -81,7 +78,7 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Product deleted successfully'), backgroundColor: Colors.green),
         );
-        _fetchProducts(); // List ko update karne k liye dobara data mangwao
+        _fetchProducts();
       }
     } catch (e) {
       if (mounted) {
@@ -111,21 +108,18 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _fetchProducts, // Refresh button
+            onPressed: _fetchProducts,
           )
         ],
       ),
 
-      // --- NAYA LOGIC: Floating Button for Adding New Product ---
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          // Add Product screen par bhejenge aur result ka intezar karenge
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddProductPage()),
           );
 
-          // Agar wahan se 'true' wapas aaya (yani product save ho gaya) toh list refresh karo
           if (result == true) {
             _fetchProducts();
           }
@@ -174,7 +168,6 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Product Image
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
@@ -192,7 +185,6 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
             ),
             const SizedBox(width: 16),
 
-            // Product Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,16 +209,24 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
               ),
             ),
 
-            // Actions (Edit & Delete)
             Column(
               children: [
+                // --- UPDATE: Edit Button Logic ---
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () {
-                    // Edit logic yahan aayega
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Edit feature coming soon!')),
+                  onPressed: () async {
+                    // Yahan hum pora product object bhej rahe hain
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddProductPage(product: product),
+                      ),
                     );
+
+                    // Agar wahan se update ho kar wapas aaye to list refresh karo
+                    if (result == true) {
+                      _fetchProducts();
+                    }
                   },
                 ),
                 IconButton(
