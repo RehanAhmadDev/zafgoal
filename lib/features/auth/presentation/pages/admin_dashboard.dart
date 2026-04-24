@@ -4,7 +4,8 @@ import 'package:zafgoal/core/theme/app_colors.dart';
 
 // --- IMPORTS ---
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
-import 'manage_products_page.dart'; // NAYA IMPORT: Agar path mukhtalif ho to adjust kar lein
+import 'manage_products_page.dart';
+import 'manage_banners_page.dart'; // NAYA IMPORT: Banners page k liye
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -70,14 +71,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
                 children: [
-                  // 1. Manage Products Card (Ab active hai)
+                  // 1. Manage Products Card
                   _buildDashboardCard(
                       context,
                       'Manage Products',
                       Icons.inventory_2_outlined,
                       Colors.blue,
                           () {
-                        // NAYA LOGIC: Navigation to Manage Products Page
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ManageProductsPage()),
@@ -96,14 +96,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 3. Manage Banners Card
+                  // 3. Manage Banners Card (AB ACTIVE HAI)
                   _buildDashboardCard(
                       context,
                       'Manage Banners',
                       Icons.view_carousel_outlined,
                       Colors.purple,
                           () {
-                        _showComingSoonMessage('Manage Banners');
+                        // NAYA LOGIC: Navigation to Manage Banners Page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ManageBannersPage()),
+                        );
                       }
                   ),
 
@@ -126,7 +130,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Chota sa helper function messages k liye
   void _showComingSoonMessage(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -137,10 +140,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // --- UI Widget: Dashboard Card (Updated with onTap parameter) ---
   Widget _buildDashboardCard(BuildContext context, String title, IconData icon, Color color, VoidCallback onTap) {
     return GestureDetector(
-      onTap: onTap, // Har card ka apna custom action
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
