@@ -6,7 +6,8 @@ import 'package:zafgoal/core/theme/app_colors.dart';
 import 'package:zafgoal/features/auth/presentation/pages/sign_in_page.dart';
 import 'manage_products_page.dart';
 import 'manage_banners_page.dart';
-import 'manage_orders_page.dart'; // NAYA IMPORT: Orders page k liye
+import 'manage_orders_page.dart';
+import 'customers_page.dart'; // NAYA IMPORT: Customers page k liye
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -86,14 +87,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 2. Manage Orders Card (AB ACTIVE HAI)
+                  // 2. Manage Orders Card
                   _buildDashboardCard(
                       context,
                       'Manage Orders',
                       Icons.shopping_bag_outlined,
                       Colors.orange,
                           () {
-                        // NAYA LOGIC: Navigation to Manage Orders Page
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ManageOrdersPage()),
@@ -115,15 +115,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 4. Customers Card
+                  // 4. Customers Card (AB ACTIVE HAI)
                   _buildDashboardCard(
                       context,
                       'Customers',
                       Icons.people_outline,
                       Colors.green,
                           () {
-                        // Abhi k liye Coming Soon, iska page hum next step may banayenge
-                        _showComingSoonMessage('Customers');
+                        // NAYA LOGIC: Navigation to Customers Page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CustomersPage()),
+                        );
                       }
                   ),
                 ],
@@ -132,16 +135,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showComingSoonMessage(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$title section coming soon!'),
-          backgroundColor: AppColors.primaryDark,
-          duration: const Duration(seconds: 1),
-        )
     );
   }
 
