@@ -25,7 +25,14 @@ class _AddProductPageState extends State<AddProductPage> {
   String? _existingImageUrl;
   bool _isLoading = false;
 
-  final List<String> _categories = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat'];
+  // --- UPDATE 1: Categories ki list database k mutabiq kar di ---
+  final List<String> _categories = [
+    'Fresh Fruits',
+    'Daily Dairy',
+    'Vegetables',
+    'Bakery',
+    'Meat'
+  ];
 
   @override
   void initState() {
@@ -34,11 +41,26 @@ class _AddProductPageState extends State<AddProductPage> {
       _nameController.text = widget.product['name'] ?? '';
       _priceController.text = widget.product['price']?.toString().replaceAll('£', '') ?? '';
       _descController.text = widget.product['description'] ?? '';
-      _selectedCategory = widget.product['category'];
       _existingImageUrl = widget.product['img'];
 
-      if (widget.product['features'] != null) {
-        _featuresController.text = (widget.product['features'] as List).join(', ');
+      // --- UPDATE 2: Dropdown Crash Protection Logic ---
+      String dbCategory = widget.product['category']?.toString() ?? '';
+      if (dbCategory.isNotEmpty) {
+        // Agar DB wali category list mein nahi hai (jaise spelling ka farq), to crash se bachne k liye add kar do
+        if (!_categories.contains(dbCategory)) {
+          _categories.add(dbCategory);
+        }
+        _selectedCategory = dbCategory;
+      }
+
+      // Safe Features Parsing
+      var fetchedFeatures = widget.product['features'];
+      if (fetchedFeatures != null) {
+        if (fetchedFeatures is List) {
+          _featuresController.text = fetchedFeatures.join(', ');
+        } else {
+          _featuresController.text = fetchedFeatures.toString();
+        }
       }
     }
   }
@@ -72,7 +94,7 @@ class _AddProductPageState extends State<AddProductPage> {
         imageUrl = supabase.storage.from('product_images').getPublicUrl(imagePath);
       }
 
-      List<String> featuresList = _featuresController.text.split(',').map((e) => e.trim()).toList();
+      List<String> featuresList = _featuresController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
       final productData = {
         'name': _nameController.text.trim(),
@@ -81,15 +103,12 @@ class _AddProductPageState extends State<AddProductPage> {
         'category': _selectedCategory,
         'description': _descController.text.trim(),
         'features': featuresList,
-        // NAYA: Timestamp taake data refresh ho
         'created_at': widget.product == null ? DateTime.now().toIso8601String() : widget.product['created_at'],
       };
 
       if (widget.product == null) {
-        // Naya Product
         await supabase.from('products').insert(productData);
       } else {
-        // Purana Product Update - Yahan .select() lazmi hai
         await supabase
             .from('products')
             .update(productData)
@@ -105,7 +124,7 @@ class _AddProductPageState extends State<AddProductPage> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // true bhejna zaroori hai refresh k liye
+        Navigator.pop(context, true);
       }
     } catch (e) {
       debugPrint('Update error: $e');
@@ -184,7 +203,8 @@ class _AddProductPageState extends State<AddProductPage> {
                           filled: true, fillColor: Colors.white,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
                         ),
-                        items: _categories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+                        // .toList() se pehle unique set bana liya taake duplication na ho
+                        items: _categories.toSet().map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
                         onChanged: (val) => setState(() => _selectedCategory = val),
                       ),
                     ],

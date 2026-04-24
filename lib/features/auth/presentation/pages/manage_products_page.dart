@@ -48,8 +48,8 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
     }
   }
 
-  // --- 2. Product Delete karne ka logic ---
-  Future<void> _deleteProduct(int id, String name) async {
+  // --- 2. Product Delete karne ka logic (UPDATED) ---
+  Future<void> _deleteProduct(dynamic id, String name) async {
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -72,13 +72,23 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
     if (!confirm) return;
 
     try {
-      await Supabase.instance.client.from('products').delete().eq('id', id);
+      // NAYA LOGIC: .select() lagana lazmi hai taake pata chale delete hua ya nahi
+      final response = await Supabase.instance.client
+          .from('products')
+          .delete()
+          .eq('id', id)
+          .select();
+
+      // Agar response khali hai, toh iska matlab Supabase RLS ne rok diya hai
+      if (response.isEmpty) {
+        throw 'Supabase Security (RLS) ne delete karne se rok diya! SQL Editor mein delete policy lagayen.';
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Product deleted successfully'), backgroundColor: Colors.green),
         );
-        _fetchProducts();
+        _fetchProducts(); // List refresh karein
       }
     } catch (e) {
       if (mounted) {
@@ -211,11 +221,9 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
 
             Column(
               children: [
-                // --- UPDATE: Edit Button Logic ---
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
                   onPressed: () async {
-                    // Yahan hum pora product object bhej rahe hain
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -223,7 +231,6 @@ class _ManageProductsPageState extends State<ManageProductsPage> {
                       ),
                     );
 
-                    // Agar wahan se update ho kar wapas aaye to list refresh karo
                     if (result == true) {
                       _fetchProducts();
                     }
