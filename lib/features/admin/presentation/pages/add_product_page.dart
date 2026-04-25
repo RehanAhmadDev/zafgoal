@@ -25,15 +25,6 @@ class _AddProductPageState extends State<AddProductPage> {
   String? _existingImageUrl;
   bool _isLoading = false;
 
-  // --- UPDATE 1: Categories ki list database k mutabiq kar di ---
-  final List<String> _categories = [
-    'Fresh Fruits',
-    'Daily Dairy',
-    'Vegetables',
-    'Bakery',
-    'Meat'
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -43,13 +34,9 @@ class _AddProductPageState extends State<AddProductPage> {
       _descController.text = widget.product['description'] ?? '';
       _existingImageUrl = widget.product['img'];
 
-      // --- UPDATE 2: Dropdown Crash Protection Logic ---
+      // Edit mode mein mojooda category ko set kar rahay hain
       String dbCategory = widget.product['category']?.toString() ?? '';
       if (dbCategory.isNotEmpty) {
-        // Agar DB wali category list mein nahi hai (jaise spelling ka farq), to crash se bachne k liye add kar do
-        if (!_categories.contains(dbCategory)) {
-          _categories.add(dbCategory);
-        }
         _selectedCategory = dbCategory;
       }
 
@@ -197,15 +184,33 @@ class _AddProductPageState extends State<AddProductPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildLabel('Category'),
-                      DropdownButtonFormField<String>(
-                        value: _selectedCategory,
-                        decoration: InputDecoration(
-                          filled: true, fillColor: Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                        ),
-                        // .toList() se pehle unique set bana liya taake duplication na ho
-                        items: _categories.toSet().map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
-                        onChanged: (val) => setState(() => _selectedCategory = val),
+                      // --- NAYA DYNAMIC DROPDOWN LAGA DIYA HAI ---
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: Supabase.instance.client.from('categories').stream(primaryKey: ['id']),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          // Database se categories ke naam extract kar rahay hain
+                          List<String> dynamicCategories = snapshot.data!.map((c) => c['name'].toString()).toList();
+
+                          // Dropdown Crash Protection: Agar selected category DB list mein nahi hai (jaise edit karte waqt), toh usay add kar do
+                          if (_selectedCategory != null && !dynamicCategories.contains(_selectedCategory)) {
+                            dynamicCategories.add(_selectedCategory!);
+                          }
+
+                          return DropdownButtonFormField<String>(
+                            value: _selectedCategory,
+                            decoration: InputDecoration(
+                              filled: true, fillColor: Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                            ),
+                            // Unique items set kar rahay hain taake duplication error na aaye
+                            items: dynamicCategories.toSet().map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+                            onChanged: (val) => setState(() => _selectedCategory = val),
+                          );
+                        },
                       ),
                     ],
                   ),
