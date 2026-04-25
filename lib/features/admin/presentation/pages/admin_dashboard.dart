@@ -8,8 +8,9 @@ import 'manage_products_page.dart';
 import 'manage_banners_page.dart';
 import 'manage_orders_page.dart';
 import 'customers_page.dart';
-// 1. NAYA IMPORT: Send Notification page k liye
 import 'send_notification_page.dart';
+// NAYA IMPORT: Categories page ke liye
+import 'manage_categories_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -117,7 +118,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 4. Customers Card
+                  // 4. Manage Categories Card (NAYA ADD KIYA HAI)
+                  _buildDashboardCard(
+                      context,
+                      'Manage Categories',
+                      Icons.category_outlined,
+                      Colors.teal,
+                          () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const ManageCategoriesPage()),
+                        );
+                      }
+                  ),
+
+                  // 5. Customers Card
                   _buildDashboardCard(
                       context,
                       'Customers',
@@ -131,7 +146,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       }
                   ),
 
-                  // 5. NAYA CARD: Send Notification Card
+                  // 6. Send Notification Card
                   _buildDashboardCard(
                       context,
                       'Send Broadcast',

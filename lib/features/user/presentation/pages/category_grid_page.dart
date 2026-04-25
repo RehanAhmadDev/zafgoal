@@ -1,20 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CategoryGridPage extends StatelessWidget {
   const CategoryGridPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> allCategories = [
-      {'name': 'Toys', 'img': 'https://cdn-icons-png.flaticon.com/512/3082/3082060.png'},
-      {'name': 'Bakery', 'img': 'https://cdn-icons-png.flaticon.com/512/3014/3014498.png'},
-      {'name': 'Vegetable', 'img': 'https://cdn-icons-png.flaticon.com/512/2329/2329865.png'},
-      {'name': 'Dairy', 'img': 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png'},
-      {'name': 'Drinks', 'img': 'https://cdn-icons-png.flaticon.com/512/2405/2405479.png'},
-      {'name': 'Meat', 'img': 'https://cdn-icons-png.flaticon.com/512/3143/3143643.png'},
-      // Aap is list ko mazeed bara kar sakte hain
-    ];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -27,33 +18,70 @@ class CategoryGridPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(20),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 20,
-          crossAxisSpacing: 10,
-          childAspectRatio: 0.8,
-        ),
-        itemCount: 15, // Dummy repetition
-        itemBuilder: (context, index) {
-          var cat = allCategories[index % allCategories.length];
-          return Column(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.green, width: 2),
-                ),
-                child: CircleAvatar(
-                  radius: 35,
-                  backgroundColor: Colors.white,
-                  backgroundImage: NetworkImage(cat['img']!),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(cat['name']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-            ],
+      // Yahan se Static List hata kar StreamBuilder laga diya hai
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: Supabase.instance.client.from('categories').stream(primaryKey: ['id']),
+        builder: (context, snapshot) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Colors.green));
+          }
+
+          // Error handling
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final categories = snapshot.data;
+
+          // Agar database mein koi category nahi hai
+          if (categories == null || categories.isEmpty) {
+            return const Center(child: Text('No categories found.'));
+          }
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.8,
+            ),
+            itemCount: categories.length, // Ab yeh database ki ginti ke hisab se chalega
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+              final String name = cat['name'] ?? 'Unknown';
+              final String imgStr = cat['img'] ?? '';
+
+              // Agar tasveer ka link khali hai (jaise nayi category mein tha), toh yeh default icon dikhaye ga
+              final String displayImg = imgStr.isEmpty
+                  ? 'https://cdn-icons-png.flaticon.com/512/1044/1044627.png'
+                  : imgStr;
+
+              return Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.green, width: 2),
+                    ),
+                    child: CircleAvatar(
+                      radius: 35,
+                      backgroundColor: Colors.white,
+                      backgroundImage: NetworkImage(displayImg),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    name,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
