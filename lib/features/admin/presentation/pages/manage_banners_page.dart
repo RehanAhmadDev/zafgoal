@@ -54,9 +54,9 @@ class _ManageBannersPageState extends State<ManageBannersPage> {
       final file = File(image.path);
       final fileName = 'banner_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // A. Image ko Storage mein upload karna (Make sure 'product_images' bucket exists or use 'banners')
+      // A. Image ko Storage mein upload karna
       await Supabase.instance.client.storage
-          .from('product_images') // Aap product_images bucket hi use kar sakte hain ya naya bana lein
+          .from('product_images')
           .upload('banners/$fileName', file);
 
       final imageUrl = Supabase.instance.client.storage
@@ -81,16 +81,59 @@ class _ManageBannersPageState extends State<ManageBannersPage> {
     }
   }
 
-  // --- 3. Banner Delete karna ---
+  // --- 3. Banner Delete karna (Safe Delete with Confirmation) ---
   Future<void> _deleteBanner(int id) async {
+    // 1. Pehle Confirmation Dialog dikhayen
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Delete Banner?'),
+        content: const Text('Kya aap waqai is banner ko delete karna chahte hain? Yeh wapas nahi aayega.'),
+        actions: [
+          // Cancel Button
+          TextButton(
+            onPressed: () => Navigator.pop(context, false), // False return karega
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          // Delete Button
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true), // True return karega
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false; // Agar user dialog ke bahar click kare toh false ho jaye
+
+    // 2. Agar user ne Cancel kar diya toh function yahin rok dein
+    if (!confirm) return;
+
+    // 3. Agar Delete dabaya hai toh Supabase se delete karein
     try {
-      await Supabase.instance.client.from('banners').delete().eq('id', id);
-      _fetchBanners();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Banner delete kar diya gaya'), backgroundColor: Colors.orange),
-      );
+      final response = await Supabase.instance.client
+          .from('banners')
+          .delete()
+          .eq('id', id)
+          .select(); // .select() lagana zaroori hai error catch karne ke liye
+
+      if (response.isEmpty) {
+        throw 'Supabase Security (RLS) ne rok diya hai!';
+      }
+
+      if (mounted) {
+        _fetchBanners(); // List refresh karein taake delete hua banner foran screen se gayab ho jaye
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Banner delete kar diya gaya'), backgroundColor: Colors.green),
+        );
+      }
     } catch (e) {
       debugPrint('Delete error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -142,7 +185,7 @@ class _ManageBannersPageState extends State<ManageBannersPage> {
           width: double.infinity,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
             image: DecorationImage(
               image: NetworkImage(banner['image_url']),
               fit: BoxFit.cover,
